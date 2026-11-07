@@ -16,6 +16,24 @@ It runs, strictly one after another:
 
 No ads, accounts, telemetry, network calls of its own, database or background services.
 
+## Privacy and logs
+
+**Your information never leaves your computer.** Windows Repair Assistant does not collect,
+upload or send anything, anywhere. There is no telemetry, no analytics, no crash reporting service
+and no account. The only network activity comes from Microsoft's own DISM tool, which may download
+replacement Windows files from Windows Update during a repair.
+
+- **Logs are saved locally only**, on the computer the app runs on, in
+  `C:\ProgramData\WindowsRepairAssistant\Logs`. They are never sent anywhere.
+- **Only the 5 most recent repair logs are kept.** Older ones are deleted automatically.
+- **Only the 5 most recent crash logs are kept** (written only if the app itself hits an unexpected
+  error). Older ones are deleted automatically.
+- A log records what the repair did (date and time, Windows version, the commands run, their output
+  and results) so you or a technician can see what happened. It contains no personal files, documents,
+  passwords or browsing data.
+- Logs are plain text. Open them with the **View log** / **Open log folder** buttons. You can
+  delete them at any time.
+
 ## Project layout
 
 ```
@@ -107,11 +125,14 @@ The exe is **unsigned**. On other PCs, the UAC prompt will show "Unknown publish
 will warn on first download, which undermines trust in a tool that asks for admin rights. Sign it
 before release (e.g. Azure Trusted Signing, roughly USD 10/month) with `signtool sign /fd SHA256 /tr <timestamp-url> /td SHA256 ...`.
 
-## Logs
+## Logs (technical details)
 
-One plain-text log per session in `C:\ProgramData\WindowsRepairAssistant\Logs\`
-(`repair-YYYYMMDD-HHMMSS.log`). The newest 5 repair logs and newest 5 crash logs (`crash-*.log`) are kept; older ones are deleted automatically. The app has **View log** and **Open log folder**
-buttons. Logs never leave the computer. Each contains the date/time, Windows version, every
-command, its output (progress throttled to every 10%), exit codes, status, errors and total
-duration. A session that never wrote its end marker is reported on the next launch as
-"did not finish normally".
+User-facing summary: see [Privacy and logs](#privacy-and-logs).
+
+- One plain-text log per session: `repair-YYYYMMDD-HHMMSS.log`; crash reports: `crash-*.log`.
+- Retention: `LogStore.LogsToKeepPerKind` (5), applied per kind at startup and after each repair.
+- Contents: date/time, Windows version, every command, its output (progress throttled to every 10%),
+  exit codes, status, errors and total duration.
+- A session that never wrote its end marker is reported on the next launch as "did not finish normally".
+- The folder's permissions are restricted to SYSTEM/Administrators (Users can read) because the app
+  writes there with administrator rights.

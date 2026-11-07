@@ -75,6 +75,10 @@ jobs:
           > This build is not code-signed yet, so Windows may show "Unknown publisher" or a SmartScreen
           > warning ("Windows protected your PC" → **More info** → **Run anyway**).
 
+          **Privacy:** nothing is collected or sent anywhere. Logs are saved only on your own computer
+          (``C:\ProgramData\WindowsRepairAssistant\Logs``); just the 5 most recent repair logs and 5 most
+          recent crash logs are kept.
+
           SHA-256: ``$hash``
           "@ | Set-Content release-notes.md -Encoding utf8
 
