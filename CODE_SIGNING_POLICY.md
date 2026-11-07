@@ -30,15 +30,7 @@ build that produced it, and the exe's product name and version must match the re
 This program will not transfer any information to other networked systems unless specifically
 requested by the user or the person installing or operating it.
 
-Windows Repair Assistant has no telemetry, analytics, accounts or update checks. It runs
-Microsoft's built-in Windows tools (DISM and SFC) when the user clicks **Start Repair**. During that
-repair, DISM may download replacement Windows system files from Microsoft's Windows Update service.
-This is part of Windows itself and is governed by the
-[Microsoft Privacy Statement](https://privacy.microsoft.com/privacystatement).
-
-Repair logs are stored only on the computer the program runs on
-(`C:\ProgramData\WindowsRepairAssistant\Logs`). Only the 5 most recent repair logs and 5 most recent
-crash logs are kept, and they are never sent anywhere.
+Full details: [Privacy policy](PRIVACY.md).
 
 ## System changes
 

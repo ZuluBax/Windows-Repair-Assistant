@@ -85,6 +85,9 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
         OpenLogFolderCommand = new RelayCommand(OpenLogFolder);
         ViewLogCommand = new RelayCommand(ViewLog, () => LogFilePath is not null);
         CloseCommand = new RelayCommand(() => CloseRequested?.Invoke(this, EventArgs.Empty), () => !IsRunning);
+        // Shown in-app rather than opening a browser: this process is elevated, and a browser
+        // launched from it would also run as administrator.
+        ShowPrivacyCommand = new RelayCommand(() => _dialogs.ShowInformation("Privacy", AppInfo.PrivacySummary));
     }
 
     public event EventHandler? CloseRequested;
@@ -105,6 +108,8 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
     public ICommand ViewLogCommand { get; }
 
     public ICommand CloseCommand { get; }
+
+    public ICommand ShowPrivacyCommand { get; }
 
     public string AppVersion => AppInfo.Version;
 

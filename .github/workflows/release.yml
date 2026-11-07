@@ -140,7 +140,7 @@ jobs:
 
           **Privacy:** nothing is collected or sent anywhere. Logs are saved only on your own computer
           (``C:\ProgramData\WindowsRepairAssistant\Logs``); just the 5 most recent repair logs and 5 most
-          recent crash logs are kept.
+          recent crash logs are kept. Read the full [Privacy policy](https://github.com/${{ github.repository }}/blob/main/PRIVACY.md).
 
           SHA-256: ``$hash``
           "@ | Set-Content release-notes.md -Encoding utf8

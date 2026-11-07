@@ -21,7 +21,7 @@ Their requirements and how this project meets them:
 | OSI-approved licence, no proprietary components | MIT [`LICENSE`](../LICENSE); no third-party packages ship in the app |
 | Actively maintained, already released | [Releases](https://github.com/ZuluBax/Windows-Repair-Assistant/releases) (v1.0.0-beta.1) |
 | Functionality described on the download page | [`README.md`](../README.md) and each release's notes |
-| "Code signing policy" on the home page, attribution, team roles, privacy statement | [`CODE_SIGNING_POLICY.md`](../CODE_SIGNING_POLICY.md), linked from the README |
+| "Code signing policy" on the home page, attribution, team roles, privacy statement | [`CODE_SIGNING_POLICY.md`](../CODE_SIGNING_POLICY.md) and [`PRIVACY.md`](../PRIVACY.md), both linked from the README |
 | Built from source automatically on GitHub-hosted runners | [`.github/workflows/release.yml`](../.github/workflows/release.yml) |
 | Product name/version metadata enforced | [`.signpath/artifact-configuration.xml`](../.signpath/artifact-configuration.xml) + "Verify exe metadata" step |
 | Every release manually approved | SignPath signing policy approver (you) |

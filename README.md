@@ -37,6 +37,8 @@ replacement Windows files from Windows Update during a repair.
 This program will not transfer any information to other networked systems unless specifically
 requested by the user or the person installing or operating it.
 
+**Read the full [Privacy policy](PRIVACY.md).**
+
 ## Code signing policy
 
 Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
@@ -44,8 +46,7 @@ Free code signing provided by [SignPath.io](https://about.signpath.io/), certifi
 
 Release builds are built from this repository's source code by GitHub Actions and every signing
 request is manually approved. Team roles: committers, reviewers and approvers:
-[ZuluBax](https://github.com/ZuluBax). Full details, including the privacy policy:
-[Code signing policy](CODE_SIGNING_POLICY.md).
+[ZuluBax](https://github.com/ZuluBax). Full details: [Code signing policy](CODE_SIGNING_POLICY.md).
 
 ## Project layout
 
