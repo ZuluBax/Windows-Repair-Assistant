@@ -4,13 +4,19 @@ name: Release
 #   git tag v1.0.0
 #   git push origin v1.0.0
 # Tags with a suffix (e.g. v1.1.0-beta.1) are published as pre-releases.
+#
+# Code signing (SignPath Foundation) - see docs/SIGNPATH_SETUP.md:
+#   When the repository variable SIGNPATH_ORGANIZATION_ID is set, every release is signed and the
+#   workflow waits for a SignPath approver to approve it. Until then, pre-releases are published
+#   unsigned and stable releases are refused, so an unsigned v1.0.0 can never be published by mistake.
 
 on:
   push:
     tags: ['v*']
 
 permissions:
-  contents: write   # required to create the GitHub Release and upload the exe
+  contents: write   # create the GitHub Release and upload the exe
+  actions: read     # lets SignPath read this job's details and download the unsigned artifact
 
 concurrency:
   group: release-${{ github.ref }}
@@ -19,11 +25,14 @@ concurrency:
 jobs:
   release:
     runs-on: windows-latest
-    timeout-minutes: 20
+    # Includes up to an hour waiting for a human to approve the signing request in SignPath.
+    timeout-minutes: 90
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
       DOTNET_NOLOGO: 1
       TAG: ${{ github.ref_name }}
+      SIGNING_ENABLED: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+      PUBLISH_DIR: artifacts/publish/win-x64
     steps:
       - uses: actions/checkout@v4
 
@@ -39,10 +48,14 @@ jobs:
           if ($env:TAG -notmatch '^v(\d+\.\d+\.\d+)(-[0-9A-Za-z.-]+)?$') {
             throw "Tag '$env:TAG' is not a version tag like v1.2.3 or v1.2.3-beta.1"
           }
+          $prerelease = [bool]$Matches[2]
+          if (-not $prerelease -and $env:SIGNING_ENABLED -ne 'true') {
+            throw "Stable release $env:TAG must be code-signed, but SignPath is not configured yet (see docs/SIGNPATH_SETUP.md). Use a pre-release tag such as $env:TAG-beta.1 for unsigned builds."
+          }
           $version = $env:TAG.Substring(1)
           "version=$version" >> $env:GITHUB_OUTPUT
-          "prerelease=$([bool]$Matches[2])".ToLower() >> $env:GITHUB_OUTPUT
-          Write-Host "Version $version (prerelease: $([bool]$Matches[2]))"
+          "prerelease=$prerelease".ToLower() >> $env:GITHUB_OUTPUT
+          Write-Host "Version $version (prerelease: $prerelease, signing: $env:SIGNING_ENABLED)"
 
       - name: Test
         run: dotnet test --configuration Release
@@ -54,16 +67,67 @@ jobs:
           -p:PublishProfile=win-x64
           -p:Version=${{ steps.version.outputs.version }}
 
+      # The exe's metadata must match what SignPath enforces (.signpath/artifact-configuration.xml),
+      # so check it here where the error message is clearer.
+      - name: Verify exe metadata
+        shell: pwsh
+        run: |
+          $info = (Get-Item "$env:PUBLISH_DIR/WindowsRepairAssistant.exe").VersionInfo
+          Write-Host "ProductName='$($info.ProductName)' ProductVersion='$($info.ProductVersion)'"
+          if ($info.ProductName -ne 'Windows Repair Assistant') { throw "Unexpected ProductName '$($info.ProductName)'" }
+          if ($info.ProductVersion -ne '${{ steps.version.outputs.version }}') { throw "ProductVersion '$($info.ProductVersion)' does not match tag" }
+
+      - name: Upload unsigned exe for signing
+        id: upload-unsigned
+        if: env.SIGNING_ENABLED == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: unsigned-exe
+          path: ${{ env.PUBLISH_DIR }}/WindowsRepairAssistant.exe
+          if-no-files-found: error
+          retention-days: 7
+
+      # Waits for a SignPath approver to approve the request (they are notified by email).
+      - name: Sign with SignPath
+        if: env.SIGNING_ENABLED == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          parameters: |
+            version: ${{ toJSON(steps.version.outputs.version) }}
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: artifacts/signed
+
+      # Never publish something that claims to be signed but isn't: check the signature ourselves.
+      - name: Verify signature and replace unsigned exe
+        if: env.SIGNING_ENABLED == 'true'
+        shell: pwsh
+        run: |
+          $signed = 'artifacts/signed/WindowsRepairAssistant.exe'
+          if (-not (Test-Path $signed)) { throw "Signed exe not found at $signed" }
+          $sig = Get-AuthenticodeSignature $signed
+          Write-Host "Signature: $($sig.Status) - $($sig.SignerCertificate.Subject)"
+          if ($sig.Status -ne 'Valid') { throw "Signature is not valid: $($sig.Status) $($sig.StatusMessage)" }
+          Copy-Item $signed "$env:PUBLISH_DIR/WindowsRepairAssistant.exe" -Force
+
       - name: Checksum and release notes
         shell: pwsh
         run: |
-          $dir = 'artifacts/publish/win-x64'
-          $exe = Join-Path $dir 'WindowsRepairAssistant.exe'
-          if (-not (Test-Path $exe)) { throw "$exe was not produced" }
-
+          $exe = Join-Path $env:PUBLISH_DIR 'WindowsRepairAssistant.exe'
           $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
-          "$hash  WindowsRepairAssistant.exe" | Set-Content "$dir/WindowsRepairAssistant.exe.sha256" -Encoding ascii
+          "$hash  WindowsRepairAssistant.exe" | Set-Content "$env:PUBLISH_DIR/WindowsRepairAssistant.exe.sha256" -Encoding ascii
           $sizeMb = [math]::Round((Get-Item $exe).Length / 1MB, 1)
+          $policy = 'https://github.com/${{ github.repository }}/blob/main/CODE_SIGNING_POLICY.md'
+
+          if ($env:SIGNING_ENABLED -eq 'true') {
+            $signing = "This build is digitally signed. Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/). See the [Code signing policy]($policy)."
+          } else {
+            $signing = "> This pre-release is **not code-signed**, so Windows may show ""Unknown publisher"" or a SmartScreen warning (""Windows protected your PC"" → **More info** → **Run anyway**). See the [Code signing policy]($policy)."
+          }
 
           @"
           ## Download
@@ -72,8 +136,7 @@ jobs:
 
           Double-click it, choose **Yes** when Windows asks for administrator permission, then click **Start Repair**.
 
-          > This build is not code-signed yet, so Windows may show "Unknown publisher" or a SmartScreen
-          > warning ("Windows protected your PC" → **More info** → **Run anyway**).
+          $signing
 
           **Privacy:** nothing is collected or sent anywhere. Logs are saved only on your own computer
           (``C:\ProgramData\WindowsRepairAssistant\Logs``); just the 5 most recent repair logs and 5 most
@@ -89,8 +152,8 @@ jobs:
         run: |
           $ghArgs = @(
             'release', 'create', $env:TAG,
-            'artifacts/publish/win-x64/WindowsRepairAssistant.exe',
-            'artifacts/publish/win-x64/WindowsRepairAssistant.exe.sha256',
+            "$env:PUBLISH_DIR/WindowsRepairAssistant.exe",
+            "$env:PUBLISH_DIR/WindowsRepairAssistant.exe.sha256",
             '--title', "Windows Repair Assistant $env:TAG",
             '--notes-file', 'release-notes.md',
             '--generate-notes',

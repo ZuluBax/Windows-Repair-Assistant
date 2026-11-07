@@ -8,6 +8,9 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
     <Version>1.0.0</Version>
+    <!-- Keep ProductVersion exactly equal to the release version (no "+<commit>" suffix):
+         SignPath requires identical product versions per build, and checks it against the tag. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>Windows Repair Assistant</Product>
     <Company>Shaka Tech</Company>
     <Copyright>Copyright © Shaka Tech 2026</Copyright>

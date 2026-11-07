@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration for Windows Repair Assistant.
+  This file is the source of truth; paste it into the SignPath project
+  (Project > Artifact configurations > Edit) whenever it changes.
+
+  The GitHub workflow uploads the exe as a GitHub artifact, which is a zip, so the root is <zip-file>.
+  SignPath refuses to sign unless the exe's product name and version match what is declared here.
+  The release workflow passes the tag's version (e.g. 1.0.0 or 1.0.0-beta.2) as the "version" parameter.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <zip-file>
+    <pe-file path="WindowsRepairAssistant.exe" product-name="Windows Repair Assistant" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>

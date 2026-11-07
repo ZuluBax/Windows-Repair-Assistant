@@ -34,6 +34,19 @@ replacement Windows files from Windows Update during a repair.
 - Logs are plain text. Open them with the **View log** / **Open log folder** buttons. You can
   delete them at any time.
 
+This program will not transfer any information to other networked systems unless specifically
+requested by the user or the person installing or operating it.
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
+[SignPath Foundation](https://signpath.org/).
+
+Release builds are built from this repository's source code by GitHub Actions and every signing
+request is manually approved. Team roles: committers, reviewers and approvers:
+[ZuluBax](https://github.com/ZuluBax). Full details, including the privacy policy:
+[Code signing policy](CODE_SIGNING_POLICY.md).
+
 ## Project layout
 
 ```
@@ -120,11 +133,11 @@ Equivalent manual command:
 dotnet publish src\WindowsRepairAssistant\WindowsRepairAssistant.csproj -p:PublishProfile=win-x64
 ```
 
-### Before public distribution: code signing
+### Code signing
 
-The exe is **unsigned**. On other PCs, the UAC prompt will show "Unknown publisher" and SmartScreen
-will warn on first download, which undermines trust in a tool that asks for admin rights. Sign it
-before release (e.g. Azure Trusted Signing, roughly USD 10/month) with `signtool sign /fd SHA256 /tr <timestamp-url> /td SHA256 ...`.
+Releases are signed through SignPath Foundation inside the release workflow; setup steps are in
+[docs/SIGNPATH_SETUP.md](docs/SIGNPATH_SETUP.md). Until that is configured, only pre-release tags
+can be published (unsigned); stable tags are refused. Locally built exes are always unsigned.
 
 ## Logs (technical details)
 

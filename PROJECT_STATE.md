@@ -10,16 +10,16 @@ runs. The release exe is produced by `scripts\publish.cmd`.
 
 ## Blockers before public release
 
-1. **Code signing.** The exe is unsigned, so UAC shows "Unknown publisher" and SmartScreen warns. That's unacceptable for an admin tool.
+1. **Code signing.** Workflow, artifact configuration and policy are in place for SignPath Foundation; waiting on the owner to apply and configure (docs/SIGNPATH_SETUP.md). Stable tags are refused until then.
 2. **Windows 10 testing.** Never run on Windows 10. Use the manual checklist in `docs/TESTING.md`.
 3. **One real end-to-end repair run** on a VM, including a real restart.
 
 ## Next steps (suggested order)
 
 1. Run the manual checklist on Windows 10 and Windows 11 VMs.
-2. Set up code signing and add a signing step to `publish.cmd`.
+2. Apply to SignPath Foundation and complete docs/SIGNPATH_SETUP.md (signing step already in release.yml).
 3. ~~Add an app icon~~ Done (`tools/IconGenerator` → `Assets/app.ico`).
-4. Add the signing step to `.github/workflows/release.yml` once a certificate exists. (CI and tag-triggered release workflows are already in place; repo: https://github.com/ZuluBax/Windows-Repair-Assistant)
+4. After the first signed release, upload it to VirusTotal and report any false positives to the flagging vendors. (Repo: https://github.com/ZuluBax/Windows-Repair-Assistant)
 5. Later / v1.1 candidates, only if users ask: CBS.log-based SFC result detection for non-English Windows, dark mode.
 
 ## Architecture (short)
