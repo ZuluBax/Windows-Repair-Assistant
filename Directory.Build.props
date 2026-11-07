@@ -1,0 +1,16 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <!-- Embedded symbols: crash logs keep line numbers without shipping separate .pdb files. -->
+    <DebugType>embedded</DebugType>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <Version>1.0.0</Version>
+    <Product>Windows Repair Assistant</Product>
+    <Company>Shaka Tech</Company>
+    <Copyright>Copyright © Shaka Tech 2026</Copyright>
+    <Description>Free utility that runs Microsoft's DISM and SFC tools to check and repair Windows system files.</Description>
+  </PropertyGroup>
+</Project>

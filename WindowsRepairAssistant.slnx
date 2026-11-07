@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/WindowsRepairAssistant.Core/WindowsRepairAssistant.Core.csproj" />
+    <Project Path="src/WindowsRepairAssistant/WindowsRepairAssistant.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/WindowsRepairAssistant.Tests/WindowsRepairAssistant.Tests.csproj" />
+  </Folder>
+</Solution>
