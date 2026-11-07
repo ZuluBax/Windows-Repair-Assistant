@@ -19,7 +19,7 @@ runs. The release exe is produced by `scripts\publish.cmd`.
 1. Run the manual checklist on Windows 10 and Windows 11 VMs.
 2. Set up code signing and add a signing step to `publish.cmd`.
 3. Add an app icon (`.ico` + `<ApplicationIcon>`); the default icon is currently used.
-4. `git init`, plus a CI workflow (GitHub Actions `windows-latest`: test + publish + attach the artifact).
+4. Add the signing step to `.github/workflows/release.yml` once a certificate exists. (CI and tag-triggered release workflows are already in place; repo: https://github.com/ZuluBax/Windows-Repair-Assistant)
 5. Later / v1.1 candidates, only if users ask: CBS.log-based SFC result detection for non-English Windows, dark mode.
 
 ## Architecture (short)

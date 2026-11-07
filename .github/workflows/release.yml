@@ -1,0 +1,97 @@
+name: Release
+
+# Publishing a release:
+#   git tag v1.0.0
+#   git push origin v1.0.0
+# Tags with a suffix (e.g. v1.1.0-beta.1) are published as pre-releases.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write   # required to create the GitHub Release and upload the exe
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Fail fast on a malformed tag rather than shipping an exe with a nonsense version number.
+      - name: Validate tag and derive version
+        id: version
+        shell: pwsh
+        run: |
+          if ($env:TAG -notmatch '^v(\d+\.\d+\.\d+)(-[0-9A-Za-z.-]+)?$') {
+            throw "Tag '$env:TAG' is not a version tag like v1.2.3 or v1.2.3-beta.1"
+          }
+          $version = $env:TAG.Substring(1)
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "prerelease=$([bool]$Matches[2])".ToLower() >> $env:GITHUB_OUTPUT
+          Write-Host "Version $version (prerelease: $([bool]$Matches[2]))"
+
+      - name: Test
+        run: dotnet test --configuration Release
+
+      # Same publish profile as scripts/publish.cmd; the tag's version is stamped into the exe.
+      - name: Publish self-contained exe
+        run: >
+          dotnet publish src/WindowsRepairAssistant/WindowsRepairAssistant.csproj
+          -p:PublishProfile=win-x64
+          -p:Version=${{ steps.version.outputs.version }}
+
+      - name: Checksum and release notes
+        shell: pwsh
+        run: |
+          $dir = 'artifacts/publish/win-x64'
+          $exe = Join-Path $dir 'WindowsRepairAssistant.exe'
+          if (-not (Test-Path $exe)) { throw "$exe was not produced" }
+
+          $hash = (Get-FileHash $exe -Algorithm SHA256).Hash.ToLower()
+          "$hash  WindowsRepairAssistant.exe" | Set-Content "$dir/WindowsRepairAssistant.exe.sha256" -Encoding ascii
+          $sizeMb = [math]::Round((Get-Item $exe).Length / 1MB, 1)
+
+          @"
+          ## Download
+
+          **WindowsRepairAssistant.exe** ($sizeMb MB). No installation and no .NET required. Windows 10 and 11 (64-bit).
+
+          Double-click it, choose **Yes** when Windows asks for administrator permission, then click **Start Repair**.
+
+          > This build is not code-signed yet, so Windows may show "Unknown publisher" or a SmartScreen
+          > warning ("Windows protected your PC" → **More info** → **Run anyway**).
+
+          SHA-256: ``$hash``
+          "@ | Set-Content release-notes.md -Encoding utf8
+
+      - name: Create GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ghArgs = @(
+            'release', 'create', $env:TAG,
+            'artifacts/publish/win-x64/WindowsRepairAssistant.exe',
+            'artifacts/publish/win-x64/WindowsRepairAssistant.exe.sha256',
+            '--title', "Windows Repair Assistant $env:TAG",
+            '--notes-file', 'release-notes.md',
+            '--generate-notes',
+            '--verify-tag'
+          )
+          if ('${{ steps.version.outputs.prerelease }}' -eq 'true') { $ghArgs += '--prerelease' }
+          gh @ghArgs
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed ($LASTEXITCODE)" }

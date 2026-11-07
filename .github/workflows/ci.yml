@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Warnings are errors (Directory.Build.props), so a clean build is a real quality gate.
+      - name: Build
+        run: dotnet build --configuration Release
+
+      # RealTools tests no-op here: they need WRA_RUN_REAL_TOOLS=1 and an elevated interactive machine.
+      - name: Test
+        run: dotnet test --configuration Release --no-build

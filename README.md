@@ -67,6 +67,20 @@ dotnet test --filter Category=RealTools
 
 ## Publishing a release
 
+### Via GitHub (recommended)
+
+```cmd
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+`.github/workflows/release.yml` then runs the tests, builds the exe with that version stamped in,
+and creates a GitHub Release with `WindowsRepairAssistant.exe` and its `.sha256` attached. Tags with
+a suffix (`v1.1.0-beta.1`) become pre-releases. `.github/workflows/ci.yml` builds and tests every
+push and pull request.
+
+### Locally
+
 ```cmd
 scripts\publish.cmd
 ```
