@@ -110,7 +110,7 @@ before release (e.g. Azure Trusted Signing, roughly USD 10/month) with `signtool
 ## Logs
 
 One plain-text log per session in `C:\ProgramData\WindowsRepairAssistant\Logs\`
-(`repair-YYYYMMDD-HHMMSS.log`; newest 50 kept). The app has **View log** and **Open log folder**
+(`repair-YYYYMMDD-HHMMSS.log`). The newest 5 repair logs and newest 5 crash logs (`crash-*.log`) are kept; older ones are deleted automatically. The app has **View log** and **Open log folder**
 buttons. Logs never leave the computer. Each contains the date/time, Windows version, every
 command, its output (progress throttled to every 10%), exit codes, status, errors and total
 duration. A session that never wrote its end marker is reported on the next launch as

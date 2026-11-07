@@ -18,7 +18,7 @@ public sealed class CrashReporter(LogStore logStore)
         try
         {
             logStore.EnsureDirectory();
-            string path = Path.Combine(logStore.LogDirectory, $"crash-{DateTime.Now:yyyyMMdd-HHmmss-fff}.log");
+            string path = Path.Combine(logStore.LogDirectory, $"{LogStore.CrashFilePrefix}{DateTime.Now:yyyyMMdd-HHmmss-fff}{LogStore.FileExtension}");
             using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.Read);
             using var writer = new StreamWriter(stream, new UTF8Encoding(true));
             writer.WriteLine($"Windows Repair Assistant {AppInfo.Version} crash report");

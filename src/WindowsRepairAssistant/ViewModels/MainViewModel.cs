@@ -17,7 +17,6 @@ public enum AppScreen
 public sealed class MainViewModel : ObservableObject, IRepairObserver
 {
     private const int MaxOutputLines = 500;
-    private const int LogsToKeep = 50;
 
     private readonly IReadOnlyList<RepairStepDefinition> _plan;
     private readonly IProcessRunner _processRunner;
@@ -199,6 +198,10 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
             StartupNotice = "Your previous repair did not finish normally. The app or the computer may have been closed while it was running. " +
                             "You can safely start a new repair. The unfinished log is in the log folder.";
         }
+
+        // Also on startup (not only after a repair) so crash logs are tidied even if no repair is ever run.
+        // Runs after the interrupted-session check; the newest log is never pruned anyway.
+        _logStore.PruneOldLogs();
     }
 
     private async Task StartRepairAsync()
@@ -249,7 +252,7 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
             CommandManager.InvalidateRequerySuggested();
         }
 
-        _logStore.PruneOldLogs(LogsToKeep);
+        _logStore.PruneOldLogs();
     }
 
     private void PrepareForRun()

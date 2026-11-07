@@ -17,7 +17,11 @@ namespace WindowsRepairAssistant.Core;
 public sealed class LogStore
 {
     public const string FilePrefix = "repair-";
+    public const string CrashFilePrefix = "crash-";
     public const string FileExtension = ".log";
+
+    /// <summary>How many logs of each kind (repair, crash) are kept; older ones are deleted.</summary>
+    public const int LogsToKeepPerKind = 5;
     private const int TailBytesToCheck = 4096;
 
     private readonly string _rootDirectory;
@@ -98,11 +102,19 @@ public sealed class LogStore
         }
     }
 
-    /// <summary>Keeps the newest <paramref name="keep"/> logs so the folder cannot grow without bound.</summary>
-    public void PruneOldLogs(int keep)
+    /// <summary>
+    /// Keeps the newest <paramref name="keep"/> repair logs and, separately, the newest <paramref name="keep"/>
+    /// crash logs, so a burst of crashes can never push out the user's repair history.
+    /// </summary>
+    public void PruneOldLogs(int keep = LogsToKeepPerKind)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(keep);
+        PruneOldLogs(FilePrefix, keep);
+        PruneOldLogs(CrashFilePrefix, keep);
+    }
 
+    private void PruneOldLogs(string prefix, int keep)
+    {
         List<FileInfo> stale;
         try
         {
@@ -112,7 +124,7 @@ public sealed class LogStore
             }
 
             stale = new DirectoryInfo(LogDirectory)
-                .EnumerateFiles($"{FilePrefix}*{FileExtension}")
+                .EnumerateFiles($"{prefix}*{FileExtension}")
                 .Where(f => !f.Attributes.HasFlag(FileAttributes.ReparsePoint))
                 .OrderByDescending(f => f.CreationTimeUtc)
                 .Skip(keep)

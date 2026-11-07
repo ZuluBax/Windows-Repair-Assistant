@@ -137,17 +137,53 @@ public sealed class LogStoreTests : IDisposable
     public void Prune_keeps_newest_logs()
     {
         var store = new LogStore(_root, hardenPermissions: false);
-        store.EnsureDirectory();
-        for (int i = 0; i < 5; i++)
-        {
-            string file = Path.Combine(store.LogDirectory, $"repair-2026010{i}-000000.log");
-            File.WriteAllText(file, "x");
-            File.SetCreationTimeUtc(file, DateTime.UtcNow.AddDays(i));
-        }
+        CreateLogs(store, LogStore.FilePrefix, count: 5);
 
         store.PruneOldLogs(keep: 2);
 
-        string[] remaining = Directory.GetFiles(store.LogDirectory).Select(Path.GetFileName).Order().ToArray()!;
-        Assert.Equal(["repair-20260103-000000.log", "repair-20260104-000000.log"], remaining);
+        Assert.Equal(["repair-20260103.log", "repair-20260104.log"], RemainingFiles(store));
     }
+
+    [Fact]
+    public void Default_retention_keeps_five_repair_and_five_crash_logs_independently()
+    {
+        var store = new LogStore(_root, hardenPermissions: false);
+        CreateLogs(store, LogStore.FilePrefix, count: 7);
+        CreateLogs(store, LogStore.CrashFilePrefix, count: 9, newerThanRepairLogs: true);
+
+        store.PruneOldLogs();
+
+        string[] remaining = RemainingFiles(store);
+        Assert.Equal(5, LogStore.LogsToKeepPerKind);
+        Assert.Equal(["repair-20260102.log", "repair-20260103.log", "repair-20260104.log", "repair-20260105.log", "repair-20260106.log"],
+            remaining.Where(f => f.StartsWith(LogStore.FilePrefix, StringComparison.Ordinal)));
+        Assert.Equal(["crash-20260104.log", "crash-20260105.log", "crash-20260106.log", "crash-20260107.log", "crash-20260108.log"],
+            remaining.Where(f => f.StartsWith(LogStore.CrashFilePrefix, StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public void Prune_ignores_unrelated_files()
+    {
+        var store = new LogStore(_root, hardenPermissions: false);
+        CreateLogs(store, LogStore.FilePrefix, count: 1);
+        File.WriteAllText(Path.Combine(store.LogDirectory, "notes.txt"), "keep me");
+
+        store.PruneOldLogs(keep: 0);
+
+        Assert.Equal(["notes.txt"], RemainingFiles(store));
+    }
+
+    private static void CreateLogs(LogStore store, string prefix, int count, bool newerThanRepairLogs = false)
+    {
+        store.EnsureDirectory();
+        for (int i = 0; i < count; i++)
+        {
+            string file = Path.Combine(store.LogDirectory, $"{prefix}2026010{i}{LogStore.FileExtension}");
+            File.WriteAllText(file, "x");
+            File.SetCreationTimeUtc(file, DateTime.UtcNow.AddDays(i + (newerThanRepairLogs ? 100 : 0)));
+        }
+    }
+
+    private static string[] RemainingFiles(LogStore store) =>
+        Directory.GetFiles(store.LogDirectory).Select(f => Path.GetFileName(f)!).Order(StringComparer.Ordinal).ToArray();
 }
