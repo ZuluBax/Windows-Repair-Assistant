@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Dev tool: regenerates src/WindowsRepairAssistant/Assets/app.ico. Not part of the solution or the shipped app.
+       Run from the repo root: dotnet run (project option) tools/IconGenerator, see README. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+</Project>

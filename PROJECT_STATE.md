@@ -18,7 +18,7 @@ runs. The release exe is produced by `scripts\publish.cmd`.
 
 1. Run the manual checklist on Windows 10 and Windows 11 VMs.
 2. Set up code signing and add a signing step to `publish.cmd`.
-3. Add an app icon (`.ico` + `<ApplicationIcon>`); the default icon is currently used.
+3. ~~Add an app icon~~ Done (`tools/IconGenerator` → `Assets/app.ico`).
 4. Add the signing step to `.github/workflows/release.yml` once a certificate exists. (CI and tag-triggered release workflows are already in place; repo: https://github.com/ZuluBax/Windows-Repair-Assistant)
 5. Later / v1.1 candidates, only if users ask: CBS.log-based SFC result detection for non-English Windows, dark mode.
 
@@ -45,6 +45,7 @@ runs. The release exe is produced by `scripts\publish.cmd`.
 | Absolute `System32` paths, `ArgumentList` | The app runs elevated: no PATH lookup, no string-built command lines. |
 | Logs in `%ProgramData%` with a restricted ACL, reparse-point checks, `CreateNew` | Stops a standard user from planting links that redirect an elevated write or delete (a privilege-escalation pattern). |
 | Self-contained single file, no trimming | Users need no .NET install; WPF doesn't support trimming. Costs ~62 MB. |
+| Icon drawn from our own vector geometry; DIB entries below 256 px, PNG only at 256 px | An icon-font glyph isn't ours to distribute. An all-PNG `.ico` embedded via `<ApplicationIcon>` produced an assembly the runtime rejected ("Bad IL format") and that Malwarebytes quarantined. |
 | Simulation mode is `#if DEBUG` only | It's for testing UI flows quickly; it must not ship. Verified absent from the Release build. |
 
 ## Known limitations / technical debt

@@ -42,6 +42,7 @@ src/WindowsRepairAssistant.Core/   Logic, no UI: process runner, output decoding
 src/WindowsRepairAssistant/        WPF app (MVVM): Welcome → Progress → Results screens
 tests/WindowsRepairAssistant.Tests xUnit tests (+ opt-in real-tool integration tests)
 scripts/publish.cmd                Test + publish the release exe
+tools/IconGenerator/               Regenerates the app icon: dotnet run --project tools/IconGenerator
 docs/TESTING.md                    Test matrix: what is verified, and how
 PROJECT_STATE.md                   Status, decisions, known limitations, next steps
 ```
