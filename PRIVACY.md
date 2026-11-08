@@ -1,12 +1,13 @@
 # Privacy policy
 
-_Windows Repair Assistant. Effective 7 November 2026._
+_Windows Repair Assistant. Effective 8 November 2026._
 
 ## Summary
 
 **Windows Repair Assistant does not collect, store on any server, share or sell any information
-about you or your computer.** It has no telemetry, no analytics, no advertising, no accounts and no
-automatic update checks. Everything it records stays on your own computer.
+about you or your computer.** It has no telemetry, no analytics, no advertising and no accounts.
+Update checks are optional and only happen if you agree to them. Everything it records stays on your
+own computer.
 
 This program will not transfer any information to other networked systems unless specifically
 requested by the user or the person installing or operating it.
@@ -15,11 +16,17 @@ requested by the user or the person installing or operating it.
 
 When you click **Start Repair**, the program runs Microsoft's built-in Windows tools, one after
 another: DISM (`CheckHealth`, `ScanHealth`, `RestoreHealth`) and System File Checker (`sfc /scannow`).
-Nothing happens before you click that button.
+No repair tool runs before you click that button.
 
 ## Network connections
 
-- **The program itself makes no network connections.**
+- **Update checks happen only if you agree.** The first time the program runs, it asks whether it
+  may check for new versions. If you choose **Yes**, it asks GitHub for the latest version number
+  each time it opens. GitHub sees your IP address, as any website you visit does, and nothing else
+  about you or your computer is sent. The program only tells you a new version exists; it never
+  downloads or installs anything itself. You can change your choice at any time with the
+  **Update checks** link at the bottom of the window.
+- **The program makes no other network connections of its own.**
 - **Microsoft's DISM tool may connect to Windows Update** during the repair step
   (`DISM /RestoreHealth`) to download replacement Windows system files. This is part of Windows,
   happens only during a repair you started, and is covered by the
@@ -40,15 +47,18 @@ The program saves plain-text logs so you, or someone helping you, can see what a
 
 Logs do not include your documents, personal files, passwords, browsing history or account details.
 
+Your update check choice is saved in `C:\ProgramData\WindowsRepairAssistant\update-checks.txt`.
+
 **To delete the logs**, open the folder (the app's **Open log folder** button) and delete the files,
-or delete the whole `C:\ProgramData\WindowsRepairAssistant` folder. Deleting the program itself is
+or delete the whole `C:\ProgramData\WindowsRepairAssistant` folder. Deleting that folder also removes
+your update check choice, so the program will ask again next time. Deleting the program itself is
 just a matter of deleting `WindowsRepairAssistant.exe`; there is no installer.
 
 ## Third parties
 
 The program contains no third-party code that collects data. When you visit or download from
-GitHub, [GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement)
-applies to that website, not to this program.
+GitHub, or if you turn on update checks, [GitHub's privacy statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement)
+applies to that connection.
 
 ## Children
 

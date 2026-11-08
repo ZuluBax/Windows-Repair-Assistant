@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows;
 
 namespace WindowsRepairAssistant.Services;
 
@@ -11,6 +13,9 @@ public interface IShellLauncher
 
     /// <returns>An error message, or null on success.</returns>
     string? OpenTextFile(string filePath);
+
+    /// <returns>An error message, or null on success.</returns>
+    string? CopyToClipboard(string text);
 }
 
 public sealed class ShellLauncher : IShellLauncher
@@ -26,6 +31,20 @@ public sealed class ShellLauncher : IShellLauncher
 
     public string? OpenTextFile(string filePath) =>
         File.Exists(filePath) ? Launch(Notepad, filePath) : "The log file could not be found.";
+
+    public string? CopyToClipboard(string text)
+    {
+        try
+        {
+            Clipboard.SetDataObject(text, copy: true);
+            return null;
+        }
+        catch (ExternalException ex)
+        {
+            // Another program can hold the clipboard open, which is outside our control.
+            return ex.Message;
+        }
+    }
 
     private static string? Launch(string executable, string argument)
     {

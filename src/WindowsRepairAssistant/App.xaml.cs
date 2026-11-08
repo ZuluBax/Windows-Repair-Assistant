@@ -44,6 +44,7 @@ public partial class App : Application
 
         IProcessRunner processRunner = new SystemProcessRunner();
         Func<Task<RestartRequestResult>> requestRestart = WindowsRestart.RequestRestartAsync;
+        IUpdateChecker updateChecker = new GitHubUpdateChecker();
         string versionLabel = AppInfo.Version;
         string? simulationTitle = null;
 #if DEBUG
@@ -56,9 +57,17 @@ public partial class App : Application
             versionLabel += $" [SIMULATION '{scenario}' - no real commands were run]";
             simulationTitle = $"Windows Repair Assistant [SIMULATION: {scenario}]";
         }
+
+        string? simulatedUpdate = e.Args.FirstOrDefault(a => a.StartsWith("--simulate-update=", StringComparison.Ordinal))?["--simulate-update=".Length..];
+        if (simulatedUpdate is not null)
+        {
+            updateChecker = new SimulatedUpdateChecker(simulatedUpdate);
+        }
 #endif
 
-        _viewModel = new MainViewModel(new MessageBoxDialogService(), new ShellLauncher(), logStore, Dispatcher, processRunner, requestRestart, versionLabel);
+        _viewModel = new MainViewModel(
+            new MessageBoxDialogService(), new ShellLauncher(), logStore, Dispatcher, processRunner, requestRestart, versionLabel,
+            updateChecker, new UpdatePreferenceStore(logStore));
         var window = new MainWindow(_viewModel);
         if (simulationTitle is not null)
         {

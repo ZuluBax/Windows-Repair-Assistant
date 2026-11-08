@@ -138,7 +138,7 @@ jobs:
 
           $signing
 
-          **Privacy:** nothing is collected or sent anywhere. Logs are saved only on your own computer
+          **Privacy:** nothing is collected. Update checks are optional and only contact GitHub if you agree. Logs are saved only on your own computer
           (``C:\ProgramData\WindowsRepairAssistant\Logs``); just the 5 most recent repair logs and 5 most
           recent crash logs are kept. Read the full [Privacy policy](https://github.com/${{ github.repository }}/blob/main/PRIVACY.md).
 

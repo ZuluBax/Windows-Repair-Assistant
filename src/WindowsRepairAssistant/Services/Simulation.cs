@@ -70,4 +70,14 @@ internal sealed class SimulatedProcessRunner(string scenario) : IProcessRunner
         return Task.FromResult(new RestartRequestResult(true, null));
     }
 }
+
+/// <summary>
+/// DEBUG BUILDS ONLY. Launch with --simulate-update=9.9.9 to see the update notice without a real
+/// release existing. The first-run prompt still appears and saves a real choice.
+/// </summary>
+internal sealed class SimulatedUpdateChecker(string latestVersion) : IUpdateChecker
+{
+    public Task<UpdateCheckResult> CheckAsync(string currentVersion) =>
+        Task.FromResult(new UpdateCheckResult(UpdateCheckStatus.UpdateAvailable, latestVersion));
+}
 #endif

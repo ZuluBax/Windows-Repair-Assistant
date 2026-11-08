@@ -19,6 +19,7 @@ Windows 10 has **not** been tested yet.
 | 10 | Restart confirm / cancel | Verified (simulated restart) | UI Automation: "No" leaves Windows running; "Yes" calls the restart path (simulated). The real `shutdown.exe /r` call was **not** executed. **Manual check needed.** |
 | 11 | Restart later | Verified | UI Automation: choices hidden, explanation shown, Close exits the app. |
 | 12 | Windows 10 and Windows 11 | Windows 11 only | **Windows 10 not tested.** |
+| 13 | Update check (opt-in) | Logic verified | Unit tests with a fake network: version comparison, malformed and hostile responses, offline, timeout, exact request contents, saved choice. The prompt, notice and footer link have **not** been seen running, and a real "update available" response needs a published stable release. **Manual check needed.** |
 
 Also verified: single-instance guard (second launch shows "already open"); the published Release
 exe launches and ignores `--simulate`; the log folder ACL is restricted to SYSTEM/Administrators
@@ -27,7 +28,7 @@ exe launches and ignores `--simulate`; the log folder ACL is restricted to SYSTE
 ## Automated tests
 
 ```cmd
-dotnet test                                                  :: 50 unit tests, run in under a second
+dotnet test                                                  :: 87 unit tests, run in under a second
 set WRA_RUN_REAL_TOOLS=1 && dotnet test --filter Category=RealTools   :: elevated, about 1-15 min, read-only
 ```
 
@@ -41,6 +42,7 @@ set WRA_RUN_REAL_TOOLS=1 && dotnet test --filter Category=RealTools   :: elevate
 6. Wait for the results. Check that the wording matches the log (**View log**).
 7. **Restart computer now** → **No**: nothing happens. Then **Yes**: the PC restarts.
 8. Relaunch after the restart and run again → **Restart later** → **Close**.
+   - Update prompt: with no `C:\ProgramData\WindowsRepairAssistant\update-checks.txt`, the first launch asks once, No is the default, and later launches don't ask again. In a Debug build, `--simulate-update=9.9.9` with checks on shows the notice. **Copy link** pastes into a browser, and the **Update checks** link switches On/Off and survives a relaunch. Offline, nothing appears and Start repair still works.
 9. Disconnect the network and run again on a VM with injected corruption, if available, to see the "no-internet" path for real.
 
 ## Not yet covered
