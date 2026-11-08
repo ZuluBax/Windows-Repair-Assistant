@@ -41,6 +41,9 @@ public sealed class LogStore
 
     public string LogDirectory { get; }
 
+    /// <summary>In the protected root folder, so it gets the same hardening as the logs.</summary>
+    public string UpdatePreferencePath => Path.Combine(_rootDirectory, "update-checks.txt");
+
     /// <exception cref="IOException">The folder could not be created or is not safe to use.</exception>
     public void EnsureDirectory()
     {

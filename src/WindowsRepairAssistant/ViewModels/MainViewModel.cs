@@ -27,6 +27,12 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
     private readonly LogStore _logStore;
     private readonly Dispatcher _dispatcher;
     private readonly DispatcherTimer _elapsedTimer;
+    private readonly IUpdateChecker _updateChecker;
+    private readonly UpdatePreferenceStore _updatePreferences;
+
+    private bool _updateChecksEnabled;
+    private string? _updateNotice;
+    private string? _updateLinkStatus;
 
     private DateTimeOffset _runStartedAt;
     private bool _lastOutputWasProgress;
@@ -64,8 +70,12 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
         Dispatcher dispatcher,
         IProcessRunner processRunner,
         Func<Task<RestartRequestResult>> requestRestart,
-        string versionLabel)
+        string versionLabel,
+        IUpdateChecker updateChecker,
+        UpdatePreferenceStore updatePreferences)
     {
+        _updateChecker = updateChecker;
+        _updatePreferences = updatePreferences;
         _versionLabel = versionLabel;
         _processRunner = processRunner;
         _requestRestart = requestRestart;
@@ -88,6 +98,9 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
         // Shown in-app rather than opening a browser: this process is elevated, and a browser
         // launched from it would also run as administrator.
         ShowPrivacyCommand = new RelayCommand(() => _dialogs.ShowInformation("Privacy", AppInfo.PrivacySummary));
+        ToggleUpdateChecksCommand = new RelayCommand(ToggleUpdateChecks, () => !IsRunning);
+        // Copied rather than opened, for the same reason: no browser running as administrator.
+        CopyUpdateLinkCommand = new RelayCommand(CopyUpdateLink);
     }
 
     public event EventHandler? CloseRequested;
@@ -111,7 +124,19 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
 
     public ICommand ShowPrivacyCommand { get; }
 
+    public ICommand ToggleUpdateChecksCommand { get; }
+
+    public ICommand CopyUpdateLinkCommand { get; }
+
     public string AppVersion => AppInfo.Version;
+
+    public string UpdateChecksLabel => _updateChecksEnabled ? "Update checks: On" : "Update checks: Off";
+
+    public string UpdateLink => GitHubUpdateChecker.ReleasesPageUrl;
+
+    public string? UpdateNotice { get => _updateNotice; private set => SetProperty(ref _updateNotice, value); }
+
+    public string? UpdateLinkStatus { get => _updateLinkStatus; private set => SetProperty(ref _updateLinkStatus, value); }
 
     public AppScreen Screen { get => _screen; private set => SetProperty(ref _screen, value); }
 
@@ -207,6 +232,74 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
         // Also on startup (not only after a repair) so crash logs are tidied even if no repair is ever run.
         // Runs after the interrupted-session check; the newest log is never pruned anyway.
         _logStore.PruneOldLogs();
+
+        InitializeUpdateChecks();
+    }
+
+    private void InitializeUpdateChecks()
+    {
+        bool? saved = _updatePreferences.Load();
+        if (saved is null)
+        {
+            SetUpdateChecksEnabled(_dialogs.AskToCheckForUpdates());
+        }
+        else
+        {
+            _updateChecksEnabled = saved.Value;
+            OnPropertyChanged(nameof(UpdateChecksLabel));
+        }
+
+        if (_updateChecksEnabled)
+        {
+            _ = CheckForUpdatesAsync();
+        }
+    }
+
+    private void ToggleUpdateChecks()
+    {
+        SetUpdateChecksEnabled(!_updateChecksEnabled);
+        if (_updateChecksEnabled)
+        {
+            _ = CheckForUpdatesAsync();
+        }
+        else
+        {
+            UpdateNotice = null;
+            UpdateLinkStatus = null;
+        }
+    }
+
+    private void SetUpdateChecksEnabled(bool enabled)
+    {
+        _updateChecksEnabled = enabled;
+        OnPropertyChanged(nameof(UpdateChecksLabel));
+
+        if (!_updatePreferences.Save(enabled))
+        {
+            _dialogs.ShowInformation("Update checks",
+                "Your choice could not be saved, so it only applies until you close the app.");
+        }
+    }
+
+    private async Task CheckForUpdatesAsync()
+    {
+        // Off the UI thread: resolving a system proxy can block before the first await completes.
+        UpdateCheckResult result = await Task.Run(() => _updateChecker.CheckAsync(AppInfo.Version));
+
+        // The check is deliberately silent unless there is news. The user may also have turned checks off meanwhile.
+        if (_updateChecksEnabled && result.Status == UpdateCheckStatus.UpdateAvailable)
+        {
+            UpdateNotice = $"A new version of Windows Repair Assistant is available: {result.LatestVersion} (you have {AppInfo.Version}). " +
+                           "To get it, paste this link into your web browser:";
+        }
+    }
+
+    private void CopyUpdateLink()
+    {
+        string? error = _shell.CopyToClipboard(UpdateLink);
+        UpdateLinkStatus = error is null
+            ? "Link copied."
+            : "The link could not be copied. Please type it into your web browser instead.";
     }
 
     private async Task StartRepairAsync()

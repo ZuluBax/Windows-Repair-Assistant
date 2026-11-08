@@ -14,15 +14,20 @@ It runs, strictly one after another:
 | 3 | `DISM /Online /Cleanup-Image /RestoreHealth` | Repair the component store (may download from Windows Update). Skipped when step 2 confirms there is no damage |
 | 4 | `sfc /scannow` | Scan and repair protected system files |
 
-No ads, accounts, telemetry, network calls of its own, database or background services.
+No ads, accounts, telemetry, database or background services. Its only network call of its own is an
+optional update check, which it asks about on first run.
 
 ## Privacy and logs
 
-**Your information never leaves your computer.** Windows Repair Assistant does not collect,
-upload or send anything, anywhere. There is no telemetry, no analytics, no crash reporting service
-and no account. The only network activity comes from Microsoft's own DISM tool, which may download
-replacement Windows files from Windows Update during a repair.
+**Your files, logs and system details never leave your computer.** Windows Repair Assistant does not
+collect or upload any of them. There is no telemetry, no analytics, no crash reporting service and no
+account. Network activity is limited to Microsoft's own DISM tool, which may download replacement
+Windows files from Windows Update during a repair, and the update check if you agree to it.
 
+- **Update checks are opt-in.** On first run the app asks whether it may ask GitHub for the latest
+  version number each time it opens. GitHub sees your IP address and nothing else is sent. The app only
+  tells you a new version exists; it never downloads or installs anything. Change your choice with the
+  **Update checks** link at the bottom of the window.
 - **Logs are saved locally only**, on the computer the app runs on, in
   `C:\ProgramData\WindowsRepairAssistant\Logs`. They are never sent anywhere.
 - **Only the 5 most recent repair logs are kept.** Older ones are deleted automatically.
@@ -83,7 +88,11 @@ never reboots your development machine:
 
 ```cmd
 WindowsRepairAssistant.exe --simulate=clean|repaired|sfc-partial|dism-fail|no-internet
+WindowsRepairAssistant.exe --simulate-update=9.9.9
 ```
+
+`--simulate-update` shows the update notice when update checks are on. The first-run prompt and your
+answer are real, because they use the same settings file as a normal run.
 
 Simulated sessions are labelled `[SIMULATION ...]` in the window title and in the log. The code is
 compiled out of Release builds entirely (`#if DEBUG`).

@@ -34,7 +34,9 @@ Full details: [Privacy policy](PRIVACY.md).
 
 ## System changes
 
-The program makes no changes until the user clicks **Start Repair**. The start screen explains what
+The program makes no changes to Windows until the user clicks **Start Repair**; before that it only
+tidies its own old logs and saves the user's update check choice in its own folder. The program never
+downloads or installs updates itself. The start screen explains what
 the repair does, and the computer is only restarted after the user explicitly confirms a warning
 dialog. The program is a single executable with no installer; removing it is a matter of deleting
 the file (and, optionally, the log folder above).

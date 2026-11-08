@@ -4,7 +4,7 @@ _Last updated: 2026-11-07_
 
 ## Status
 
-**v1.0.0 feature-complete; not yet released.** Builds clean (warnings as errors), 50 unit tests
+**v1.0.0 feature-complete; not yet released.** Builds clean (warnings as errors), 87 unit tests
 passing, read-only real-tool tests passing, UI flows verified with UI Automation using simulated
 runs. The release exe is produced by `scripts\publish.cmd`.
 
@@ -20,7 +20,8 @@ runs. The release exe is produced by `scripts\publish.cmd`.
 2. Apply to SignPath Foundation and complete docs/SIGNPATH_SETUP.md (signing step already in release.yml).
 3. ~~Add an app icon~~ Done (`tools/IconGenerator` → `Assets/app.ico`).
 4. After the first signed release, upload it to VirusTotal and report any false positives to the flagging vendors. (Repo: https://github.com/ZuluBax/Windows-Repair-Assistant)
-5. Later / v1.1 candidates, only if users ask: CBS.log-based SFC result detection for non-English Windows, dark mode.
+5. Confirm with SignPath Foundation that the opt-in update check fits their "unless specifically requested" privacy condition.
+6. Later / v1.1 candidates: one-click update install (after signing is live); only if users ask: CBS.log-based SFC result detection for non-English Windows, dark mode.
 
 ## Architecture (short)
 
@@ -47,6 +48,8 @@ runs. The release exe is produced by `scripts\publish.cmd`.
 | Logs in `%ProgramData%` with a restricted ACL, reparse-point checks, `CreateNew` | Stops a standard user from planting links that redirect an elevated write or delete (a privilege-escalation pattern). |
 | Self-contained single file, no trimming | Users need no .NET install; WPF doesn't support trimming. Costs ~62 MB. |
 | Icon drawn from our own vector geometry; DIB entries below 256 px, PNG only at 256 px | An icon-font glyph isn't ours to distribute. An all-PNG `.ico` embedded via `<ApplicationIcon>` produced an assembly the runtime rejected ("Bad IL format") and that Malwarebytes quarantined. |
+| Update check is opt-in, asked once on first run, and only shows a notice with a link to copy | A check sends the user's IP address to GitHub, so it needs consent to keep the "unless specifically requested" privacy promise. The link is copied rather than opened because a browser launched from this elevated process would run as administrator. The link is a fixed address, and only a strictly validated version number from the response is displayed. |
+| No self-install yet | An elevated self-replacing exe needs signed releases to verify against, and SignPath Foundation's certificate may be shared across projects, so a signer check alone may not identify our builds. Revisit for v1.1 once signing is live. |
 | Simulation mode is `#if DEBUG` only | It's for testing UI flows quickly; it must not ship. Verified absent from the Release build. |
 
 ## Known limitations / technical debt
