@@ -93,7 +93,6 @@ public sealed class LogStoreTests : IDisposable
         {
             path = log.FilePath!;
             var runner = new FakeProcessRunner()
-                .Returns(RepairStepKind.DismRestoreHealth, SampleOutput.DismRestoreOk)
                 .Returns(RepairStepKind.SfcScanNow, SampleOutput.SfcRepaired);
             await new RepairOrchestrator(runner, RepairPlan.Create(@"C:\Windows\System32"), log,
                 new SessionContext("1.0.0", "Windows 11 Pro 24H2"), TimeProvider.System).RunAsync(new RecordingObserver());

@@ -19,23 +19,55 @@ public class OrchestratorTests
     }
 
     [Fact] // Scenario 3 + 4: everything completes, nothing to fix
-    public async Task Healthy_system_runs_all_steps_in_order_and_reports_no_problems()
+    public async Task Healthy_system_skips_repair_and_reports_no_problems()
+    {
+        var observer = new RecordingObserver();
+        var runner = new FakeProcessRunner()
+            .Returns(RepairStepKind.DismCheckHealth, SampleOutput.DismClean)
+            .Returns(RepairStepKind.DismScanHealth, SampleOutput.DismClean)
+            .Returns(RepairStepKind.SfcScanNow, SampleOutput.SfcClean);
+
+        RepairReport report = await Run(runner, observer);
+
+        Assert.Equal([RepairStepKind.DismCheckHealth, RepairStepKind.DismScanHealth, RepairStepKind.SfcScanNow], runner.Invocations);
+        Assert.Equal(1, runner.MaxConcurrent);
+        Assert.Equal(StepStatus.Skipped, report.Steps[2].Status);
+        Assert.Equal(StepFinding.NoRepairNeeded, report.Steps[2].Finding);
+        Assert.Contains("finish:DismRestoreHealth:Skipped", observer.Events);
+        Assert.DoesNotContain("start:DismRestoreHealth", observer.Events);
+        Assert.Equal(OverallOutcome.NoProblemsFound, report.Summary.Outcome);
+        Assert.Equal("Windows system integrity checks did not identify problems requiring repair.", report.Summary.Headline);
+        Assert.False(report.Summary.RestartRecommended);
+    }
+
+    [Fact] // Non-English Windows: an unreadable scan result must not be mistaken for a clean one
+    public async Task Unrecognised_scan_result_still_runs_repair()
     {
         var runner = new FakeProcessRunner()
             .Returns(RepairStepKind.DismCheckHealth, SampleOutput.DismClean)
+            .Returns(RepairStepKind.DismScanHealth, SampleOutput.DismLocalised)
+            .Returns(RepairStepKind.DismRestoreHealth, SampleOutput.DismRestoreOk)
+            .Returns(RepairStepKind.SfcScanNow, SampleOutput.SfcClean);
+
+        RepairReport report = await Run(runner);
+
+        Assert.Contains(RepairStepKind.DismRestoreHealth, runner.Invocations);
+        Assert.Equal(StepStatus.Succeeded, report.Steps[2].Status);
+    }
+
+    [Fact]
+    public async Task Damage_recorded_by_check_health_still_runs_repair_when_scan_is_clean()
+    {
+        var runner = new FakeProcessRunner()
+            .Returns(RepairStepKind.DismCheckHealth, SampleOutput.DismRepairable)
             .Returns(RepairStepKind.DismScanHealth, SampleOutput.DismClean)
             .Returns(RepairStepKind.DismRestoreHealth, SampleOutput.DismRestoreOk)
             .Returns(RepairStepKind.SfcScanNow, SampleOutput.SfcClean);
 
         RepairReport report = await Run(runner);
 
-        Assert.Equal([RepairStepKind.DismCheckHealth, RepairStepKind.DismScanHealth, RepairStepKind.DismRestoreHealth, RepairStepKind.SfcScanNow], runner.Invocations);
-        Assert.Equal(1, runner.MaxConcurrent);
-        Assert.All(report.Steps, s => Assert.Equal(StepStatus.Succeeded, s.Status));
-        Assert.Equal(StepFinding.NoRepairNeeded, report.Steps[2].Finding);
-        Assert.Equal(OverallOutcome.NoProblemsFound, report.Summary.Outcome);
-        Assert.Equal("Windows system integrity checks did not identify problems requiring repair.", report.Summary.Headline);
-        Assert.False(report.Summary.RestartRecommended);
+        Assert.Contains(RepairStepKind.DismRestoreHealth, runner.Invocations);
+        Assert.Equal(StepFinding.Repaired, report.Steps[2].Finding);
     }
 
     [Fact] // Scenario 5
@@ -107,7 +139,6 @@ public class OrchestratorTests
     {
         var runner = new FakeProcessRunner()
             .Returns(RepairStepKind.DismScanHealth, SampleOutput.DismClean)
-            .Returns(RepairStepKind.DismRestoreHealth, SampleOutput.DismRestoreOk)
             .Returns(RepairStepKind.SfcScanNow, SampleOutput.SfcRepaired);
 
         RepairReport report = await Run(runner);
@@ -122,7 +153,6 @@ public class OrchestratorTests
     {
         var runner = new FakeProcessRunner()
             .Returns(RepairStepKind.DismScanHealth, SampleOutput.DismClean)
-            .Returns(RepairStepKind.DismRestoreHealth, SampleOutput.DismRestoreOk)
             .Returns(RepairStepKind.SfcScanNow, SampleOutput.SfcPartial);
 
         RepairReport report = await Run(runner);
@@ -176,6 +206,7 @@ public class OrchestratorTests
     {
         var observer = new RecordingObserver();
         var runner = new FakeProcessRunner()
+            .Returns(RepairStepKind.DismScanHealth, SampleOutput.DismRepairable)
             .Returns(RepairStepKind.DismRestoreHealth, SampleOutput.DismRestoreOk)
             .Returns(RepairStepKind.SfcScanNow, SampleOutput.SfcClean);
 

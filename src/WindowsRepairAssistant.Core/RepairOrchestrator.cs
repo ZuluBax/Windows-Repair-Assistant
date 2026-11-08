@@ -70,10 +70,9 @@ public sealed class RepairOrchestrator(
 
     private async Task<StepResult> RunStepAsync(int index, RepairStepDefinition step, IReadOnlyList<StepResult> previous, IRepairObserver observer)
     {
-        string? skipReason = GetSkipReason(step, previous);
-        if (skipReason is not null)
+        StepResult? skipped = GetSkip(step, previous);
+        if (skipped is not null)
         {
-            StepResult skipped = StepResult.Skipped(step, skipReason);
             log.StepStarted(index, plan.Count, step, time.GetLocalNow());
             log.StepFinished(skipped, null);
             return skipped;
@@ -111,7 +110,7 @@ public sealed class RepairOrchestrator(
         }
     }
 
-    internal static string? GetSkipReason(RepairStepDefinition step, IReadOnlyList<StepResult> previous)
+    internal static StepResult? GetSkip(RepairStepDefinition step, IReadOnlyList<StepResult> previous)
     {
         if (!step.IsDism)
         {
@@ -122,13 +121,25 @@ public sealed class RepairOrchestrator(
         StepResult? failedDism = previous.FirstOrDefault(r => r.Step.IsDism && r.Status == StepStatus.Failed);
         if (failedDism is not null)
         {
-            return $"Skipped because {failedDism.Step.DisplayName} failed. The remaining DISM steps would fail for the same reason.";
+            return StepResult.Skipped(step, $"Skipped because {failedDism.Step.DisplayName} failed. The remaining DISM steps would fail for the same reason.");
         }
 
-        if (step.Kind == RepairStepKind.DismRestoreHealth
-            && previous.Any(r => r.Finding == StepFinding.CorruptionNotRepairable))
+        if (step.Kind != RepairStepKind.DismRestoreHealth)
         {
-            return "Skipped because Windows reported that the damage cannot be repaired by DISM.";
+            return null;
+        }
+
+        if (previous.Any(r => r.Finding == StepFinding.CorruptionNotRepairable))
+        {
+            return StepResult.Skipped(step, "Skipped because Windows reported that the damage cannot be repaired by DISM.");
+        }
+
+        // Only ScanHealth's explicit verdict counts: CheckHealth just reads a recorded flag, and
+        // unrecognised output (e.g. non-English Windows) proves nothing, so repair still runs then.
+        bool scanConfirmedClean = previous.Any(r => r.Step.Kind == RepairStepKind.DismScanHealth && r.Finding == StepFinding.NoCorruption);
+        if (scanConfirmedClean && !previous.Any(r => r.Finding == StepFinding.CorruptionRepairable))
+        {
+            return StepResult.Skipped(step, "Not needed. The scan found no damage in the Windows component store, so there was nothing to repair.", StepFinding.NoRepairNeeded);
         }
 
         return null;
@@ -136,23 +147,16 @@ public sealed class RepairOrchestrator(
 
     /// <summary>
     /// RestoreHealth reports the same success message whether it fixed something or had nothing to fix,
-    /// so the earlier scans decide which of those we tell the user.
+    /// so only claim a repair when an earlier scan actually found damage.
     /// </summary>
     internal static StepAnalysis ApplyContext(RepairStepDefinition step, StepAnalysis analysis, IReadOnlyList<StepResult> previous)
     {
-        if (step.Kind != RepairStepKind.DismRestoreHealth || analysis.Status != StepStatus.Succeeded)
-        {
-            return analysis;
-        }
+        bool repairedKnownDamage = step.Kind == RepairStepKind.DismRestoreHealth
+            && analysis.Status == StepStatus.Succeeded
+            && previous.Any(r => r.Finding == StepFinding.CorruptionRepairable);
 
-        if (previous.Any(r => r.Finding == StepFinding.CorruptionRepairable))
-        {
-            return analysis with { Finding = StepFinding.Repaired, Message = "Damage in the Windows component store was repaired." };
-        }
-
-        bool scanConfirmedClean = previous.Any(r => r.Step.Kind == RepairStepKind.DismScanHealth && r.Finding == StepFinding.NoCorruption);
-        return scanConfirmedClean
-            ? analysis with { Finding = StepFinding.NoRepairNeeded, Message = "No repairs were needed — the Windows component store is healthy." }
+        return repairedKnownDamage
+            ? analysis with { Finding = StepFinding.Repaired, Message = "Damage in the Windows component store was repaired." }
             : analysis;
     }
 

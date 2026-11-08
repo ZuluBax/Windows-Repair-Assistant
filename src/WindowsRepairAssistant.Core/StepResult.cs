@@ -38,8 +38,8 @@ public sealed record StepResult(
     int? ExitCode,
     TimeSpan Duration)
 {
-    public static StepResult Skipped(RepairStepDefinition step, string reason) =>
-        new(step, StepStatus.Skipped, StepFinding.None, reason, null, TimeSpan.Zero);
+    public static StepResult Skipped(RepairStepDefinition step, string reason, StepFinding finding = StepFinding.None) =>
+        new(step, StepStatus.Skipped, finding, reason, null, TimeSpan.Zero);
 }
 
 public static class StepStatusText

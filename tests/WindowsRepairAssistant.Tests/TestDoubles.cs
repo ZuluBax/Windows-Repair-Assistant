@@ -14,6 +14,8 @@ internal static class SampleOutput
 
     public static ProcessRunResult DismNotRepairable() => Ok(DismBanner + "The component store is not repairable.\r\nThe operation completed successfully.\r\n");
 
+    public static ProcessRunResult DismLocalised() => Ok(DismBanner + Bar100 + "Es wurde keine Komponentenspeicherbeschädigung erkannt.\r\nDer Vorgang wurde erfolgreich beendet.\r\n");
+
     public static ProcessRunResult DismRestoreOk() => Ok(DismBanner +
         "[==                         5.0%                           ]\r[=====================      84.6%==================         ]\r" +
         Bar100 + "The restore operation completed successfully.\r\nThe operation completed successfully.\r\n");

@@ -10,7 +10,7 @@ Windows 10 has **not** been tested yet.
 | 1 | Normal launch and UAC elevation | Partly verified | `requireAdministrator` manifest confirmed embedded in the published exe. The UAC prompt itself was not observed (the dev shell was already elevated). **Manual check needed.** |
 | 2 | User declines UAC | Not tested | By design Windows does not start the app at all, so there is no app code involved. **Manual check needed.** |
 | 3 | All commands complete successfully | Verified (logic, UI); partly real | Unit tests and the `clean` simulation. Real `DISM /CheckHealth` and real `sfc /verifyonly` ran through the production runner. A full real repair run has **not** been done. |
-| 4 | DISM detects no corruption | Verified | Real `DISM /CheckHealth` on the dev machine → "No component store corruption detected" correctly classified. Unit tests. |
+| 4 | DISM detects no corruption | Verified | Real `DISM /CheckHealth` on the dev machine → "No component store corruption detected" correctly classified. Unit tests, including RestoreHealth being skipped after a clean ScanHealth. |
 | 5 | DISM detects and repairs corruption | Verified (logic, UI) | Unit tests and the `repaired` simulation. Not reproducible on a healthy PC. |
 | 6 | DISM fails | Verified (logic, UI) | Unit tests (error codes, could-not-start, exceptions) and the `dism-fail` simulation: remaining DISM steps Skipped, SFC still runs, outcome "could not be fully completed". |
 | 7 | SFC finds and repairs files | Verified (logic, UI) | Unit tests and the `repaired` simulation. |
@@ -27,7 +27,7 @@ exe launches and ignores `--simulate`; the log folder ACL is restricted to SYSTE
 ## Automated tests
 
 ```cmd
-dotnet test                                                  :: 44 unit tests, run in under a second
+dotnet test                                                  :: 50 unit tests, run in under a second
 set WRA_RUN_REAL_TOOLS=1 && dotnet test --filter Category=RealTools   :: elevated, about 1-15 min, read-only
 ```
 

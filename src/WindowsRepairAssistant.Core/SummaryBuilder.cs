@@ -34,7 +34,9 @@ public static class SummaryBuilder
 
         bool dismCorruptionUnfixed = Has(StepFinding.CorruptionRepairable) && !dismRepaired;
         bool problemsRemain = Has(StepFinding.PartiallyRepaired) || Has(StepFinding.CorruptionNotRepairable) || dismCorruptionUnfixed;
-        bool incomplete = results.Any(r => r.Status is StepStatus.Failed or StepStatus.Skipped);
+        // A repair skipped because the scan proved it unnecessary is a clean result, not a missing check.
+        bool incomplete = results.Any(r => r.Status == StepStatus.Failed
+                                           || (r.Status == StepStatus.Skipped && r.Finding != StepFinding.NoRepairNeeded));
         bool restartPending = Has(StepFinding.RestartPending);
 
         bool dismConfirmedClean = results.Any(r => r.Step.IsDism && r.Finding == StepFinding.NoCorruption)

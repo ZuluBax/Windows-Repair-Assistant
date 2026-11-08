@@ -11,7 +11,7 @@ It runs, strictly one after another:
 |---|---------|---------|
 | 1 | `DISM /Online /Cleanup-Image /CheckHealth` | Has Windows already recorded component store damage? |
 | 2 | `DISM /Online /Cleanup-Image /ScanHealth` | Thorough scan of the component store |
-| 3 | `DISM /Online /Cleanup-Image /RestoreHealth` | Repair the component store (may download from Windows Update) |
+| 3 | `DISM /Online /Cleanup-Image /RestoreHealth` | Repair the component store (may download from Windows Update). Skipped when step 2 confirms there is no damage |
 | 4 | `sfc /scannow` | Scan and repair protected system files |
 
 No ads, accounts, telemetry, network calls of its own, database or background services.

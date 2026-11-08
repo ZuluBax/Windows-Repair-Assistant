@@ -4,7 +4,7 @@ _Last updated: 2026-11-07_
 
 ## Status
 
-**v1.0.0 feature-complete; not yet released.** Builds clean (warnings as errors), 44 unit tests
+**v1.0.0 feature-complete; not yet released.** Builds clean (warnings as errors), 50 unit tests
 passing, read-only real-tool tests passing, UI flows verified with UI Automation using simulated
 runs. The release exe is produced by `scripts\publish.cmd`.
 
@@ -38,6 +38,7 @@ runs. The release exe is produced by `scripts\publish.cmd`.
 | Steps never cancelled or killed once started | Interrupting DISM/SFC mid-repair can leave the component store worse off. Window close is blocked during a run; if the app dies anyway, the tools keep running and the unfinished log is detected on next launch. |
 | A failed DISM step skips the remaining DISM steps, but SFC always runs | DISM steps share the servicing stack and fail the same way; SFC is independent and still useful. |
 | RestoreHealth is skipped if Windows says the image is "not repairable" | It cannot succeed; avoids a pointless 20-minute wait. |
+| RestoreHealth is skipped if ScanHealth explicitly reports no corruption | There is nothing to repair, and "No damage found" followed by "Repairing" reads as a contradiction. Counts as a clean result, not "incomplete". CheckHealth alone can't trigger the skip (it only reads a recorded flag), and neither can unrecognised output (non-English Windows). |
 | "No problems" / "repaired" claimed only on explicit tool messages | The spec says never to claim success because a command finished. SFC's exit code doesn't distinguish clean from corrupt, so unrecognised SFC output is "Completed with issues / could not be confirmed". |
 | Output read as raw bytes with encoding detection | `sfc.exe` writes UTF-16 when redirected while DISM writes in the OEM code page. Verified against real output. |
 | Split lines on CR as well as LF | DISM/SFC redraw progress with a bare CR; otherwise progress would only appear at the end. |
