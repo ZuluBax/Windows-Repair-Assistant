@@ -1,29 +1,26 @@
 # Code signing policy
 
-Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
-[SignPath Foundation](https://signpath.org/).
+**Windows Repair Assistant is not code-signed at the moment.** Windows may show "Unknown publisher"
+or a SmartScreen warning when you run it.
 
-## What is signed
+## What is published
 
-Only `WindowsRepairAssistant.exe` release builds published on this repository's
-[Releases page](https://github.com/ZuluBax/Windows-Repair-Assistant/releases).
+Only pre-releases are available for now, each an unsigned `WindowsRepairAssistant.exe` on this
+repository's [Releases page](https://github.com/ZuluBax/Windows-Repair-Assistant/releases). Stable
+releases will not be published until they can be signed.
 
-Every signed binary is built automatically from the source code in this repository by the
-[release workflow](.github/workflows/release.yml) on GitHub-hosted runners. Nothing is built or
-signed on a personal computer. The signing request is verified by SignPath against the GitHub
-build that produced it, and the exe's product name and version must match the release.
+Every published exe is built automatically from the source code in this repository by the
+[release workflow](.github/workflows/release.yml) on GitHub-hosted runners, not on a personal
+computer. Each release lists the exe's SHA-256 checksum so you can check your download matches it.
 
 ## Team roles
 
 | Role | Members |
 |------|---------|
 | Committers and reviewers | [ZuluBax](https://github.com/ZuluBax) |
-| Approvers | [ZuluBax](https://github.com/ZuluBax) |
 
-- **Committers** may change the source code. Changes from anyone else (pull requests) are reviewed
-  by a reviewer before they are merged.
-- **Approvers** manually approve every signing request in SignPath before a release is signed.
-- All team members use multi-factor authentication for GitHub and SignPath.
+**Committers** may change the source code. Changes from anyone else (pull requests) are reviewed by a
+reviewer before they are merged.
 
 ## Privacy policy
 

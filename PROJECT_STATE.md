@@ -1,23 +1,23 @@
 # Project state: Windows Repair Assistant
 
-_Last updated: 2026-11-07_
+_Last updated: 2026-11-08_
 
 ## Status
 
-**v1.0.0 feature-complete; not yet released.** Builds clean (warnings as errors), 50 unit tests
+**v1.0.0 feature-complete; stable not yet released.** Unsigned pre-releases `v1.0.0-beta.1` and `-beta.2` are public. Builds clean (warnings as errors), 50 unit tests
 passing, read-only real-tool tests passing, UI flows verified with UI Automation using simulated
 runs. The release exe is produced by `scripts\publish.cmd`.
 
 ## Blockers before public release
 
-1. **Code signing.** Workflow, artifact configuration and policy are in place for SignPath Foundation; waiting on the owner to apply and configure (docs/SIGNPATH_SETUP.md). Stable tags are refused until then.
+1. **Code signing.** SignPath Foundation did not approve the application (November 2026). A signing route is needed: reapply once the project has more release history and reputation, Azure Artifact Signing if eligible, or an OV certificate. The SignPath workflow step is dormant, and stable tags are refused until signing works.
 2. **Windows 10 testing.** Never run on Windows 10. Use the manual checklist in `docs/TESTING.md`.
 3. **One real end-to-end repair run** on a VM, including a real restart.
 
 ## Next steps (suggested order)
 
 1. Run the manual checklist on Windows 10 and Windows 11 VMs.
-2. Apply to SignPath Foundation and complete docs/SIGNPATH_SETUP.md (signing step already in release.yml).
+2. Choose a signing route (see blocker 1). A non-SignPath route also needs the signing step in release.yml changed, and the code signing policy updated to match.
 3. ~~Add an app icon~~ Done (`tools/IconGenerator` → `Assets/app.ico`).
 4. After the first signed release, upload it to VirusTotal and report any false positives to the flagging vendors. (Repo: https://github.com/ZuluBax/Windows-Repair-Assistant)
 5. Later / v1.1 candidates, only if users ask: CBS.log-based SFC result detection for non-English Windows, dark mode.

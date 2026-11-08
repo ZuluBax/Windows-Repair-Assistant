@@ -41,12 +41,12 @@ requested by the user or the person installing or operating it.
 
 ## Code signing policy
 
-Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
-[SignPath Foundation](https://signpath.org/).
+**This app is not code-signed at the moment**, so Windows may show "Unknown publisher" or a SmartScreen
+warning. Only pre-releases are published until it can be signed.
 
-Release builds are built from this repository's source code by GitHub Actions and every signing
-request is manually approved. Team roles: committers, reviewers and approvers:
-[ZuluBax](https://github.com/ZuluBax). Full details: [Code signing policy](CODE_SIGNING_POLICY.md).
+Published builds are built from this repository's source code by GitHub Actions, and each release
+lists the exe's SHA-256 checksum. Committer and reviewer: [ZuluBax](https://github.com/ZuluBax).
+Full details: [Code signing policy](CODE_SIGNING_POLICY.md).
 
 ## Project layout
 
@@ -136,9 +136,9 @@ dotnet publish src\WindowsRepairAssistant\WindowsRepairAssistant.csproj -p:Publi
 
 ### Code signing
 
-Releases are signed through SignPath Foundation inside the release workflow; setup steps are in
-[docs/SIGNPATH_SETUP.md](docs/SIGNPATH_SETUP.md). Until that is configured, only pre-release tags
-can be published (unsigned); stable tags are refused. Locally built exes are always unsigned.
+Releases are currently unsigned: only pre-release tags can be published, and stable tags are refused.
+The release workflow has an optional SignPath signing step that stays off unless SignPath is configured
+([docs/SIGNPATH_SETUP.md](docs/SIGNPATH_SETUP.md)). Locally built exes are always unsigned.
 
 ## Logs (technical details)
 

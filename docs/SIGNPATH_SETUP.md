@@ -1,5 +1,8 @@
 # Setting up code signing with SignPath Foundation
 
+> **Status (November 2026):** not in use. SignPath Foundation did not approve the application at this
+> time, so releases are unsigned. This guide is kept in case a later application succeeds.
+
 Everything in the repository is ready: the release workflow signs automatically as soon as the
 GitHub settings in step 4 exist. The steps below need your identity and accounts, so only you can
 do them. Exact screen names in SignPath may differ slightly from this guide.
