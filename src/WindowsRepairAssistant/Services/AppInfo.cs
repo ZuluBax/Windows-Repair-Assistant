@@ -15,8 +15,12 @@ public static class AppInfo
         "It has no telemetry, analytics, advertising or accounts.\n\n" +
         "Update checks are optional and only happen if you agree. The app then asks GitHub for the latest version " +
         "number when it opens. GitHub sees your IP address, as any website you visit does, and nothing else about you " +
-        "or your computer is sent. The app makes no other network connections, and it never downloads or installs updates itself.\n\n" +
+        "or your computer is sent. The app never downloads or installs new versions of itself.\n\n" +
         "During a repair, Microsoft's DISM tool may download replacement Windows files from Windows Update.\n\n" +
+        "If you tick \"Check for Windows updates\", Windows' own update service asks Microsoft (or your organisation's update " +
+        "server) which updates are available, exactly as Settings > Windows Update does. Updates are only downloaded and " +
+        "installed if you choose them.\n\n" +
+        "If you tick \"Clean up temporary files\", files are deleted on this computer only. No list of them is kept.\n\n" +
         "Logs are saved only on this computer, in C:\\ProgramData\\WindowsRepairAssistant\\Logs. " +
         "Only the 5 most recent repair logs and 5 most recent crash logs are kept, and they are never sent anywhere. " +
         "You can delete them at any time.\n\n" +

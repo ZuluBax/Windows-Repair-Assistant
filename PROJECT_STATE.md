@@ -1,6 +1,14 @@
 # Project state: Windows Repair Assistant
 
-_Last updated: 2026-11-08_
+_Last updated: 2026-11-13_
+
+## In progress: v1.1 optional extras (branch `feat/temp-cleanup-and-windows-updates`, not yet merged)
+
+Two opt-in tick-boxes on the Welcome screen: **Clean up temporary files** (runs first) and **Check for
+Windows updates** (runs last; the user then ticks which updates to install). Both are built, with 145 tests
+passing and Debug/Release builds clean. Still to do before merging: an elevated simulated run of the
+running/results screens, then a real cleanup and a real update install on a VM
+(docs/TESTING.md, scenarios 14-17 and checklist step 10).
 
 ## Status
 
@@ -50,10 +58,21 @@ runs. The release exe is produced by `scripts\publish.cmd`.
 | Icon drawn from our own vector geometry; DIB entries below 256 px, PNG only at 256 px | An icon-font glyph isn't ours to distribute. An all-PNG `.ico` embedded via `<ApplicationIcon>` produced an assembly the runtime rejected ("Bad IL format") and that Malwarebytes quarantined. |
 | Update check is opt-in, asked once on first run, and only shows a notice with a link to copy | A check sends the user's IP address to GitHub, so it needs consent to keep the "unless specifically requested" privacy promise. The link is copied rather than opened because a browser launched from this elevated process would run as administrator. The link is a fixed address, and only a strictly validated version number from the response is displayed. |
 | No self-install yet | An elevated self-replacing exe needs signed releases to verify against, and SignPath Foundation's certificate may be shared across projects, so a signer check alone may not identify our builds. Revisit for v1.1 once signing is live. |
+| Extras are opt-in, unticked by default; cleanup first, update check last | Deleting files and contacting Microsoft are the user's choice. Cleanup first frees space before DISM may download; the update check waits until DISM/SFC have finished with the servicing stack. Extras never affect the repair verdict. |
+| Temp cleanup: every item is opened without following links, its real path checked to be inside the folder, then deleted through the same handle | Runs as administrator in folders users can write to (`C:\Windows\Temp`). Stops junction/link swaps redirecting the delete (privilege escalation). A link is only ever removed itself. |
+| Temp cleanup: "in use" means opened by anyone (exclusive open), plus files Windows will *move* at restart | The user asked for "everything not in use", with no age limit. Installers stage files in Temp to be moved at restart; deleting them first would silently break that update. "Delete at restart" entries are not protected: the dev PC had 5,726 of them, none in Temp, and the first version wrongly reported them all as "left alone". |
+| Temp cleanup: only folders named Temp/Tmp, never a drive root; another user's TEMP setting accepted only inside their profile | A TEMP set to `C:\` must never mean "delete the drive". A standard user controls their own TEMP value but we delete as admin, so it cannot point outside their profile. |
+| Temp cleanup targets the user signed in to the session, not the elevating account | If a different admin approves UAC, our own TEMP is the admin's. The session user comes from WTS and their profile/TEMP from the registry. |
+| Windows Update via the built-in COM API (`Microsoft.Update.Session`, `dynamic`) | No package needed. Uses whatever source the PC is configured for (Microsoft or WSUS). Searching works without elevation. |
+| Optional = `IUpdate.BrowseOnly`; updates that may ask questions are listed but cannot be ticked | Matches Settings' "Optional updates". An unattended install that asks a question would hang. |
+| No download size on screen | Windows reports a worst-case `MaxDownloadSize` (97 GB was seen for a monthly cumulative update). It is logged and labelled as such instead. |
+| Update install reuses the orchestrator (one step per update) | Gets the progress screen, close guard, log and results for free. |
 | Simulation mode is `#if DEBUG` only | It's for testing UI flows quickly; it must not ship. Verified absent from the Release build. |
 
 ## Known limitations / technical debt
 
+- Extras: no real optional/driver update was on offer while testing, so the `BrowseOnly` classification is unverified on real data. A real update install has not been run. Using WUA COM objects found by the search on a later (MTA) thread during install is untested on a real PC.
+- Temp cleanup counts a file as deleted when Windows accepts the delete request; the actual removal happens as the handle closes, and a failure at that moment would not be reported.
 - Result text matching is **English-only** (DISM/SFC give no machine-readable result). Other languages degrade honestly to "could not be confirmed".
 - x64 build only; ARM64 untested.
 - The `.NET 10 SDK` on the dev machine is a **per-user install** (`%LOCALAPPDATA%\Microsoft\dotnet10`), because the machine-wide winget install needed a UAC approval. Run `winget install Microsoft.DotNet.SDK.10` yourself to get it on PATH. `publish.cmd` finds either. The machine-wide SDK is 8.0, which goes out of support on 2026-11-10.

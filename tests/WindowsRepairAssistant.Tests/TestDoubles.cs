@@ -150,3 +150,39 @@ internal sealed class RecordingObserver : IRepairObserver
         }
     }
 }
+
+/// <summary>An in-process step with a scripted result, recording whether it ran.</summary>
+internal sealed class FakeInProcessStep(Func<StepAnalysis> result) : IInProcessStep
+{
+    public int Runs { get; private set; }
+
+    public async Task<StepAnalysis> RunAsync(Action<string> onOutputLine)
+    {
+        Runs++;
+        await Task.Yield();
+        onOutputLine("fake step output");
+        return result();
+    }
+}
+
+/// <summary>Stands in for the Windows Update Agent: scripted search results and install outcomes.</summary>
+internal sealed class FakeWindowsUpdateAgent : IWindowsUpdateAgent
+{
+    public Func<IReadOnlyList<WindowsUpdateInfo>> SearchResult { get; set; } = () => [];
+
+    public Dictionary<string, Func<UpdateInstallOutcome>> InstallResults { get; } = new();
+
+    public List<string> Installed { get; } = [];
+
+    public IReadOnlyList<WindowsUpdateInfo> Search() => SearchResult();
+
+    public UpdateInstallOutcome DownloadAndInstall(string updateId, Action<string> onProgress)
+    {
+        Installed.Add(updateId);
+        onProgress("Installing…");
+        return InstallResults.TryGetValue(updateId, out var result) ? result() : new UpdateInstallOutcome(true, false, null, null);
+    }
+
+    public static WindowsUpdateInfo Update(string id, bool optional = false, bool needsInput = false) =>
+        new(id, $"Title {id}", 1024 * 1024, optional, IsDriver: optional, needsInput);
+}

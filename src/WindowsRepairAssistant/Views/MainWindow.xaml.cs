@@ -35,10 +35,10 @@ public partial class MainWindow : Window
         {
             e.Cancel = true;
             MessageBox.Show(this,
-                "Windows Repair Assistant is still checking and repairing your computer.\n\n" +
-                "Stopping part-way through could leave the repair unfinished, so this window will stay open until all steps are complete. " +
+                "Windows Repair Assistant is still working on your computer.\n\n" +
+                "Stopping part-way through could leave a repair or an update unfinished, so this window will stay open until all steps are complete. " +
                 "You can minimise it and keep using your computer in the meantime.",
-                "Repair in progress", MessageBoxButton.OK, MessageBoxImage.Information);
+                "Still working", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 

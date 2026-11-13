@@ -26,6 +26,8 @@ public enum StepFinding
     ToolError,
     CouldNotStart,
     ResultUnrecognized,
+    UpdateInstalled,
+    UpdateInstalledRestartRequired,
 }
 
 public sealed record StepAnalysis(StepStatus Status, StepFinding Finding, string Message);

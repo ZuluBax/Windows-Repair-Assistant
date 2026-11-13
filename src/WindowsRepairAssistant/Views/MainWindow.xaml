@@ -196,6 +196,29 @@
 
                         <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,6,0,18" />
 
+                        <!-- Both extras are opt-in: one deletes files, the other contacts Windows Update. -->
+                        <TextBlock Text="Optional extras" Style="{StaticResource SectionHeading}" FontSize="16" AutomationProperties.HeadingLevel="Level3" />
+                        <CheckBox IsChecked="{Binding CleanTempFiles}" Margin="0,10,0,0" VerticalContentAlignment="Top"
+                                  AutomationProperties.Name="Clean up temporary files"
+                                  AutomationProperties.HelpText="Runs before the repair. Deletes everything in your Temp folder and the Windows Temp folder that is not in use.">
+                            <StackPanel Margin="6,0,0,0">
+                                <TextBlock Text="Clean up temporary files" Style="{StaticResource BodyText}" FontWeight="SemiBold" />
+                                <TextBlock Style="{StaticResource SecondaryText}"
+                                           Text="Runs first. Deletes everything in your Temp folder and the Windows Temp folder that is not in use. Programs normally recreate any temporary files they need." />
+                            </StackPanel>
+                        </CheckBox>
+                        <CheckBox IsChecked="{Binding CheckWindowsUpdates}" Margin="0,12,0,0" VerticalContentAlignment="Top"
+                                  AutomationProperties.Name="Check for Windows updates"
+                                  AutomationProperties.HelpText="Runs after the repair. Asks Windows Update which updates are available. You then choose which ones to install.">
+                            <StackPanel Margin="6,0,0,0">
+                                <TextBlock Text="Check for Windows updates" Style="{StaticResource BodyText}" FontWeight="SemiBold" />
+                                <TextBlock Style="{StaticResource SecondaryText}"
+                                           Text="Runs last. Asks Windows Update (Microsoft, or your organisation's update server) which updates are available, including optional ones. Nothing is installed unless you choose it afterwards." />
+                            </StackPanel>
+                        </CheckBox>
+
+                        <Border Height="1" Background="{StaticResource BorderBrush}" Margin="0,18,0,18" />
+
                         <DockPanel Margin="0,0,0,10">
                             <TextBlock DockPanel.Dock="Left" Style="{StaticResource NoteIcon}" Text="&#xE823;" />
                             <TextBlock Style="{StaticResource SecondaryText}"
@@ -287,6 +310,15 @@
                                 <DataTrigger Binding="{Binding Outcome}" Value="Incomplete">
                                     <Setter Property="Background" Value="{StaticResource ErrorSubtleBrush}" />
                                 </DataTrigger>
+                                <DataTrigger Binding="{Binding Outcome}" Value="UpdatesInstalled">
+                                    <Setter Property="Background" Value="{StaticResource SuccessSubtleBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Outcome}" Value="UpdatesPartlyInstalled">
+                                    <Setter Property="Background" Value="{StaticResource WarningSubtleBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Outcome}" Value="UpdatesNotInstalled">
+                                    <Setter Property="Background" Value="{StaticResource ErrorSubtleBrush}" />
+                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </Border.Style>
@@ -313,12 +345,24 @@
                                             <Setter Property="Text" Value="&#xEA39;" />
                                             <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
                                         </DataTrigger>
+                                        <DataTrigger Binding="{Binding Outcome}" Value="UpdatesInstalled">
+                                            <Setter Property="Text" Value="&#xE73E;" />
+                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Outcome}" Value="UpdatesPartlyInstalled">
+                                            <Setter Property="Text" Value="&#xE7BA;" />
+                                            <Setter Property="Foreground" Value="{StaticResource WarningBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Outcome}" Value="UpdatesNotInstalled">
+                                            <Setter Property="Text" Value="&#xEA39;" />
+                                            <Setter Property="Foreground" Value="{StaticResource ErrorBrush}" />
+                                        </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
                         <StackPanel>
-                            <TextBlock Text="Repair finished" Style="{StaticResource EyebrowText}" Foreground="{StaticResource TextSecondaryBrush}" />
+                            <TextBlock Text="{Binding ResultEyebrow}" Style="{StaticResource EyebrowText}" Foreground="{StaticResource TextSecondaryBrush}" />
                             <TextBlock Text="{Binding ResultHeadline}" Style="{StaticResource SectionHeading}" Margin="0,2,0,0"
                                        AutomationProperties.LiveSetting="Assertive" AutomationProperties.HeadingLevel="Level2" />
                             <ItemsControl ItemsSource="{Binding ResultDetails}" Margin="0,8,0,0" Focusable="False">
@@ -334,6 +378,33 @@
                             <TextBlock Text="{Binding TotalDurationText}" Style="{StaticResource SecondaryText}" Margin="0,10,0,0" />
                         </StackPanel>
                     </DockPanel>
+                </Border>
+
+                <!-- Available Windows updates. Nothing is ticked for the user; placed before Restart so updates can go in first. -->
+                <Border Style="{StaticResource Card}" Margin="0,16,0,0"
+                        Visibility="{Binding HasUpdatesToOffer, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Text="Windows updates" Style="{StaticResource SectionHeading}" FontSize="16" AutomationProperties.HeadingLevel="Level2" />
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,6,0,12"
+                                   Text="Tick the updates you want, then choose Install. Important updates fix security and reliability problems. Optional updates, such as drivers, are usually only worth installing if they fix a problem you have." />
+                        <ItemsControl ItemsSource="{Binding UpdateItems}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:UpdateItemViewModel}">
+                                    <CheckBox IsChecked="{Binding IsSelected}" IsEnabled="{Binding CanSelect}" Margin="0,0,0,10" VerticalContentAlignment="Top"
+                                              AutomationProperties.Name="{Binding Title}" AutomationProperties.HelpText="{Binding Details}">
+                                        <StackPanel Margin="6,0,0,0">
+                                            <TextBlock Text="{Binding Title}" Style="{StaticResource BodyText}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Details}" Style="{StaticResource SecondaryText}" />
+                                            <TextBlock Text="{Binding Note}" Style="{StaticResource SecondaryText}" Foreground="{StaticResource WarningBrush}"
+                                                       Visibility="{Binding Note, Converter={StaticResource NotEmptyToVisibility}}" />
+                                        </StackPanel>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Button Content="INSTALL SELECTED UPDATES" Style="{StaticResource PrimaryButton}" Command="{Binding InstallUpdatesCommand}"
+                                HorizontalAlignment="Left" Margin="0,6,0,0" AutomationProperties.Name="Install selected updates" />
+                    </StackPanel>
                 </Border>
 
                 <!-- Restart choice. Only reachable on this screen, i.e. never while DISM/SFC is running. -->

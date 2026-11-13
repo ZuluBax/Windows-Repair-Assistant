@@ -45,6 +45,8 @@ public partial class App : Application
         IProcessRunner processRunner = new SystemProcessRunner();
         Func<Task<RestartRequestResult>> requestRestart = WindowsRestart.RequestRestartAsync;
         IUpdateChecker updateChecker = new GitHubUpdateChecker();
+        IInProcessStep tempCleanup = new TempCleanupStep();
+        IWindowsUpdateAgent windowsUpdateAgent = new WuaWindowsUpdateAgent();
         string versionLabel = AppInfo.Version;
         string? simulationTitle = null;
 #if DEBUG
@@ -53,6 +55,8 @@ public partial class App : Application
         {
             processRunner = new SimulatedProcessRunner(scenario);
             requestRestart = SimulatedProcessRunner.SimulatedRestartAsync;
+            tempCleanup = new SimulatedTempCleanup();
+            windowsUpdateAgent = new SimulatedWindowsUpdateAgent(scenario);
             // Simulated sessions share the real log folder, so they must be unmistakable there.
             versionLabel += $" [SIMULATION '{scenario}' - no real commands were run]";
             simulationTitle = $"Windows Repair Assistant [SIMULATION: {scenario}]";
@@ -67,7 +71,7 @@ public partial class App : Application
 
         _viewModel = new MainViewModel(
             new MessageBoxDialogService(), new ShellLauncher(), logStore, Dispatcher, processRunner, requestRestart, versionLabel,
-            updateChecker, new UpdatePreferenceStore(logStore));
+            updateChecker, new UpdatePreferenceStore(logStore), tempCleanup, new WindowsUpdateService(windowsUpdateAgent));
         var window = new MainWindow(_viewModel);
         if (simulationTitle is not null)
         {

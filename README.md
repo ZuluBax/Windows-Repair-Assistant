@@ -14,15 +14,27 @@ It runs, strictly one after another:
 | 3 | `DISM /Online /Cleanup-Image /RestoreHealth` | Repair the component store (may download from Windows Update). Skipped when step 2 confirms there is no damage |
 | 4 | `sfc /scannow` | Scan and repair protected system files |
 
+Two **optional extras** can be ticked on the first screen. Both start unticked:
+
+| When | Extra | What it does |
+|------|-------|--------------|
+| Before step 1 | **Clean up temporary files** | Deletes everything in the signed-in user's Temp folder and `C:\Windows\Temp` that is not in use. Files Windows is waiting to move at the next restart are kept. |
+| After step 4 | **Check for Windows updates** | Asks Windows Update which updates (important and optional) are available. The user ticks the ones they want and chooses **Install selected updates**. Nothing is pre-ticked or installed automatically. |
+
 No ads, accounts, telemetry, database or background services. Its only network call of its own is an
-optional update check, which it asks about on first run.
+optional update check for this app, which it asks about on first run. The optional Windows Update check
+uses Windows' own update service.
 
 ## Privacy and logs
 
 **Your files, logs and system details never leave your computer.** Windows Repair Assistant does not
 collect or upload any of them. There is no telemetry, no analytics, no crash reporting service and no
 account. Network activity is limited to Microsoft's own DISM tool, which may download replacement
-Windows files from Windows Update during a repair, and the update check if you agree to it.
+Windows files from Windows Update during a repair, the app's update check if you agree to it, and
+Windows Update itself if you tick **Check for Windows updates**.
+
+- **Temp file cleanup** happens only if you tick it, and only on this computer. No list of deleted files
+  is kept; the log records totals only.
 
 - **Update checks are opt-in.** On first run the app asks whether it may ask GitHub for the latest
   version number each time it opens. GitHub sees your IP address and nothing else is sent. The app only
@@ -94,13 +106,18 @@ WindowsRepairAssistant.exe --simulate-update=9.9.9
 `--simulate-update` shows the update notice when update checks are on. The first-run prompt and your
 answer are real, because they use the same settings file as a normal run.
 
+With `--simulate`, the optional extras are simulated too. Temp cleanup deletes nothing, and the Windows
+Update check offers made-up updates (one fails to install, one needs Settings). `no-internet` also makes
+the update check fail.
+
 Simulated sessions are labelled `[SIMULATION ...]` in the window title and in the log. The code is
 compiled out of Release builds entirely (`#if DEBUG`).
 
 ### Real-tool integration tests (read-only, opt-in)
 
-Run from an **elevated** prompt. These run `DISM /CheckHealth` and `sfc /verifyonly`, which never
-modify the system:
+Run from an **elevated** prompt. These run `DISM /CheckHealth` and `sfc /verifyonly`, work out where
+the Temp folders are, and search Windows Update (internet needed). None of them modify the system, and
+nothing is deleted or installed:
 
 ```cmd
 set WRA_RUN_REAL_TOOLS=1

@@ -1,6 +1,6 @@
 # Privacy policy
 
-_Windows Repair Assistant. Effective 8 November 2026._
+_Windows Repair Assistant. Effective 13 November 2026 (adds the optional temp cleanup and Windows Update check)._
 
 ## Summary
 
@@ -18,6 +18,14 @@ When you click **Start Repair**, the program runs Microsoft's built-in Windows t
 another: DISM (`CheckHealth`, `ScanHealth`, `RestoreHealth`) and System File Checker (`sfc /scannow`).
 No repair tool runs before you click that button.
 
+Two optional extras run only if you tick them before clicking **Start Repair**:
+
+- **Clean up temporary files** deletes files that are not in use from your Temp folder and the Windows
+  Temp folder (`C:\Windows\Temp`), on this computer only. The program keeps no list of what it deleted;
+  the log records only how many files were deleted and how much space was freed.
+- **Check for Windows updates** asks Windows Update which updates are available (see below). Updates are
+  only downloaded and installed if you tick them and choose **Install selected updates**.
+
 ## Network connections
 
 - **Update checks happen only if you agree.** The first time the program runs, it asks whether it
@@ -31,6 +39,12 @@ No repair tool runs before you click that button.
   (`DISM /RestoreHealth`) to download replacement Windows system files. This is part of Windows,
   happens only during a repair you started, and is covered by the
   [Microsoft Privacy Statement](https://privacy.microsoft.com/privacystatement).
+- **Windows Update is contacted only if you tick "Check for Windows updates".** The program then
+  uses Windows' own update service, in the same way as Settings > Windows Update. That service
+  contacts Microsoft, or your organisation's update server if your computer is managed, and later
+  downloads the updates you choose to install. This is covered by the
+  [Microsoft Privacy Statement](https://privacy.microsoft.com/privacystatement). The program itself
+  sends nothing to Microsoft.
 
 ## Information stored on your computer (logs)
 
@@ -39,7 +53,7 @@ The program saves plain-text logs so you, or someone helping you, can see what a
 | | |
 |---|---|
 | **Where** | `C:\ProgramData\WindowsRepairAssistant\Logs`, on the computer the program runs on |
-| **Repair logs** | Date and time, Windows version and build, the commands run, the output of those commands, exit codes, results and how long each step took |
+| **Repair logs** | Date and time, Windows version and build, the commands run, the output of those commands, exit codes, results and how long each step took. If you chose the extras: the Temp folder locations and cleanup totals (never file names), the names of available Windows updates and the result of any you installed |
 | **Crash logs** | Written only if the program itself hits an unexpected error: the time, Windows version and technical error details, which may include file paths on your computer |
 | **How long** | Only the **5 most recent repair logs** and **5 most recent crash logs** are kept. Older ones are deleted automatically. |
 | **Who can access them** | Administrators on that computer can read and delete them; standard users can read them |

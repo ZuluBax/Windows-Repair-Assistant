@@ -18,7 +18,13 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
 {
     private const int MaxOutputLines = 500;
 
-    private readonly IReadOnlyList<RepairStepDefinition> _plan;
+    private readonly IInProcessStep _tempCleanup;
+    private readonly WindowsUpdateService _windowsUpdates;
+    private IReadOnlyList<RepairStepDefinition> _plan = [];
+    private bool _cleanTempFiles;
+    private bool _checkWindowsUpdates;
+    private bool _hasUpdatesToOffer;
+    private string _resultEyebrow = "";
     private readonly IProcessRunner _processRunner;
     private readonly Func<Task<RestartRequestResult>> _requestRestart;
     private readonly string _versionLabel;
@@ -72,8 +78,12 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
         Func<Task<RestartRequestResult>> requestRestart,
         string versionLabel,
         IUpdateChecker updateChecker,
-        UpdatePreferenceStore updatePreferences)
+        UpdatePreferenceStore updatePreferences,
+        IInProcessStep tempCleanup,
+        WindowsUpdateService windowsUpdates)
     {
+        _tempCleanup = tempCleanup;
+        _windowsUpdates = windowsUpdates;
         _updateChecker = updateChecker;
         _updatePreferences = updatePreferences;
         _versionLabel = versionLabel;
@@ -83,13 +93,14 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
         _shell = shell;
         _logStore = logStore;
         _dispatcher = dispatcher;
-        _plan = RepairPlan.CreateDefault();
-        Steps = new ObservableCollection<StepViewModel>(_plan.Select((step, i) => new StepViewModel(step, i + 1)));
+        RebuildRepairPlan();
 
         _elapsedTimer = new DispatcherTimer(TimeSpan.FromSeconds(1), DispatcherPriority.Background, (_, _) => UpdateElapsed(), dispatcher);
         _elapsedTimer.Stop();
 
         StartRepairCommand = new AsyncRelayCommand(StartRepairAsync, () => !IsRunning && IsAdministrator);
+        InstallUpdatesCommand = new AsyncRelayCommand(InstallSelectedUpdatesAsync,
+            () => Screen == AppScreen.Results && !IsRunning && !IsRestarting && UpdateItems.Any(u => u.IsSelected));
         RestartNowCommand = new AsyncRelayCommand(RestartNowAsync, () => Screen == AppScreen.Results && !IsRunning && !IsRestarting);
         RestartLaterCommand = new RelayCommand(() => RestartDeferred = true, () => Screen == AppScreen.Results && !IsRestarting);
         OpenLogFolderCommand = new RelayCommand(OpenLogFolder);
@@ -105,7 +116,43 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
 
     public event EventHandler? CloseRequested;
 
-    public ObservableCollection<StepViewModel> Steps { get; }
+    /// <summary>The steps of the plan about to run or running; rebuilt when the plan changes.</summary>
+    public ObservableCollection<StepViewModel> Steps { get; } = [];
+
+    /// <summary>Updates found by the last Windows Update check that are still not installed.</summary>
+    public ObservableCollection<UpdateItemViewModel> UpdateItems { get; } = [];
+
+    public ICommand InstallUpdatesCommand { get; }
+
+    /// <summary>Opt-in: deleting files is the user's decision.</summary>
+    public bool CleanTempFiles
+    {
+        get => _cleanTempFiles;
+        set
+        {
+            if (!IsRunning && SetProperty(ref _cleanTempFiles, value))
+            {
+                RebuildRepairPlan();
+            }
+        }
+    }
+
+    /// <summary>Opt-in: the check contacts Microsoft (or the organisation's update server).</summary>
+    public bool CheckWindowsUpdates
+    {
+        get => _checkWindowsUpdates;
+        set
+        {
+            if (!IsRunning && SetProperty(ref _checkWindowsUpdates, value))
+            {
+                RebuildRepairPlan();
+            }
+        }
+    }
+
+    public bool HasUpdatesToOffer { get => _hasUpdatesToOffer; private set => SetProperty(ref _hasUpdatesToOffer, value); }
+
+    public string ResultEyebrow { get => _resultEyebrow; private set => SetProperty(ref _resultEyebrow, value); }
 
     /// <summary>Raw tool output for the "technical details" panel; progress redraws replace the previous line.</summary>
     public ObservableCollection<string> OutputLines { get; } = [];
@@ -302,7 +349,44 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
             : "The link could not be copied. Please type it into your web browser instead.";
     }
 
-    private async Task StartRepairAsync()
+    private void RebuildRepairPlan()
+    {
+        _plan = RepairPlan.Create(RepairPlan.DefaultSystemDirectory,
+            CleanTempFiles ? _tempCleanup : null,
+            CheckWindowsUpdates ? _windowsUpdates : null);
+        ShowPlan(_plan);
+    }
+
+    private void ShowPlan(IReadOnlyList<RepairStepDefinition> plan)
+    {
+        Steps.Clear();
+        for (int i = 0; i < plan.Count; i++)
+        {
+            Steps.Add(new StepViewModel(plan[i], i + 1));
+        }
+    }
+
+    private Task StartRepairAsync()
+    {
+        RebuildRepairPlan();
+        // A fresh repair replaces any earlier list; a new check (if chosen) produces a new one.
+        UpdateItems.Clear();
+        HasUpdatesToOffer = false;
+        return RunPlanAsync(_plan, isUpdateInstall: false);
+    }
+
+    private async Task InstallSelectedUpdatesAsync()
+    {
+        List<WindowsUpdateInfo> selected = UpdateItems.Where(u => u.IsSelected).Select(u => u.Info).ToList();
+        if (IsRunning || selected.Count == 0 || !_dialogs.ConfirmInstallUpdates(selected.Count, selected.Any(u => u.IsOptional)))
+        {
+            return;
+        }
+
+        await RunPlanAsync(_windowsUpdates.CreateInstallPlan(selected), isUpdateInstall: true);
+    }
+
+    private async Task RunPlanAsync(IReadOnlyList<RepairStepDefinition> plan, bool isUpdateInstall)
     {
         if (IsRunning)
         {
@@ -316,6 +400,7 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
             return;
         }
 
+        // Also before installing updates: DISM and Windows Update share the servicing stack.
         string? runningTool = SystemInfo.FindRunningRepairTool();
         if (runningTool is not null)
         {
@@ -324,23 +409,30 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
             return;
         }
 
+        // A restart the repair asked for still matters after updates that don't need one.
+        bool restartAlreadyRecommended = isUpdateInstall && RestartRecommended;
+        ShowPlan(plan);
         PrepareForRun();
         ISessionLog log = OpenSessionLog();
         try
         {
             var orchestrator = new RepairOrchestrator(
-                _processRunner, _plan, log,
+                _processRunner, plan, log,
                 new SessionContext(_versionLabel, SystemInfo.DescribeWindows()),
                 TimeProvider.System);
 
             // Off the UI thread so nothing the orchestrator does synchronously can freeze the window.
             RepairReport report = await Task.Run(() => orchestrator.RunAsync(this));
-            ShowResults(report);
+            ShowResults(report, isUpdateInstall, restartAlreadyRecommended);
+            if (plan.Any(s => s.Kind == RepairStepKind.CheckWindowsUpdates))
+            {
+                ShowAvailableUpdates();
+            }
         }
         catch (Exception ex)
         {
-            log.Error("The repair session stopped unexpectedly.", ex);
-            ShowUnexpectedFailure();
+            log.Error("The session stopped unexpectedly.", ex);
+            ShowUnexpectedFailure(isUpdateInstall, restartAlreadyRecommended);
         }
         finally
         {
@@ -348,6 +440,12 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
             _elapsedTimer.Stop();
             IsRunning = false;
             CommandManager.InvalidateRequerySuggested();
+        }
+
+        if (isUpdateInstall)
+        {
+            // Even after a failure: whatever did install must leave the list, and the ticks are reset.
+            ShowAvailableUpdates();
         }
 
         _logStore.PruneOldLogs();
@@ -399,23 +497,35 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
         }
     }
 
-    private void ShowResults(RepairReport report)
+    private void ShowAvailableUpdates()
+    {
+        UpdateItems.Clear();
+        foreach (WindowsUpdateInfo update in _windowsUpdates.AvailableUpdates ?? [])
+        {
+            UpdateItems.Add(new UpdateItemViewModel(update));
+        }
+
+        HasUpdatesToOffer = UpdateItems.Count > 0;
+    }
+
+    private void ShowResults(RepairReport report, bool isUpdateInstall, bool restartAlreadyRecommended)
     {
         for (int i = 0; i < report.Steps.Count && i < Steps.Count; i++)
         {
             Steps[i].Apply(report.Steps[i]);
         }
 
+        ResultEyebrow = isUpdateInstall ? "Updates finished" : "Repair finished";
         Outcome = report.Summary.Outcome;
         ResultHeadline = report.Summary.Headline;
         ResultDetails = report.Summary.Details;
-        RestartRecommended = report.Summary.RestartRecommended;
+        RestartRecommended = report.Summary.RestartRecommended || restartAlreadyRecommended;
         OnPropertyChanged(nameof(RestartLaterMessage));
         TotalDurationText = $"Total time: {FileSessionLog.FormatDuration(report.Duration)}";
         Screen = AppScreen.Results;
     }
 
-    private void ShowUnexpectedFailure()
+    private void ShowUnexpectedFailure(bool isUpdateInstall, bool restartAlreadyRecommended)
     {
         foreach (StepViewModel step in Steps.Where(s => !s.IsFinished))
         {
@@ -423,10 +533,11 @@ public sealed class MainViewModel : ObservableObject, IRepairObserver
             step.Message = "Not run because the repair stopped unexpectedly.";
         }
 
+        ResultEyebrow = isUpdateInstall ? "Updates finished" : "Repair finished";
         Outcome = OverallOutcome.Incomplete;
-        ResultHeadline = "The repair stopped unexpectedly.";
+        ResultHeadline = isUpdateInstall ? "Installing updates stopped unexpectedly." : "The repair stopped unexpectedly.";
         ResultDetails = ["Windows Repair Assistant ran into an unexpected problem. No further changes were made. You can close the app and try again. The log file contains technical details."];
-        RestartRecommended = false;
+        RestartRecommended = restartAlreadyRecommended;
         OnPropertyChanged(nameof(RestartLaterMessage));
         TotalDurationText = $"Total time: {FileSessionLog.FormatDuration(DateTimeOffset.Now - _runStartedAt)}";
         Screen = AppScreen.Results;

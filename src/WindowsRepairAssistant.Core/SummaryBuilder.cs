@@ -7,6 +7,9 @@ public enum OverallOutcome
     ProblemsRemain,
     Incomplete,
     Unconfirmed,
+    UpdatesInstalled,
+    UpdatesPartlyInstalled,
+    UpdatesNotInstalled,
 }
 
 public sealed record RepairSummary(
@@ -21,9 +24,18 @@ public sealed record RepairSummary(
 /// </summary>
 public static class SummaryBuilder
 {
-    public static RepairSummary Build(IReadOnlyList<StepResult> results)
+    public static RepairSummary Build(IReadOnlyList<StepResult> allResults)
     {
-        ArgumentNullException.ThrowIfNull(results);
+        ArgumentNullException.ThrowIfNull(allResults);
+
+        if (allResults.Count > 0 && allResults.All(r => r.Step.Kind == RepairStepKind.InstallWindowsUpdate))
+        {
+            return BuildForUpdateInstall(allResults);
+        }
+
+        // The verdict comes from DISM and SFC only: a temp cleanup that skipped locked files, or an
+        // update check with no internet, says nothing about whether Windows itself is healthy.
+        List<StepResult> results = allResults.Where(r => r.Step.IsRepairTool).ToList();
 
         bool Has(StepFinding finding) => results.Any(r => r.Finding == finding);
         StepResult? Sfc() => results.FirstOrDefault(r => r.Step.Kind == RepairStepKind.SfcScanNow);
@@ -112,13 +124,66 @@ public static class SummaryBuilder
             details.Add("Some results were not in a format this app recognises (this can happen on non-English Windows). The log file contains the full output.");
         }
 
+        StepResult? cleanup = allResults.FirstOrDefault(r => r.Step.Kind == RepairStepKind.CleanTempFiles);
         if (outcome == OverallOutcome.NoProblemsFound)
         {
-            details.Add("No changes were made to your system.");
+            // Deleting temp files is a change, so the usual reassurance would be untrue after a cleanup;
+            // a failed cleanup may still have deleted some files before it stopped.
+            details.Add(cleanup is null || cleanup.Status == StepStatus.Skipped
+                ? "No changes were made to your system."
+                : "No repairs were made to Windows.");
+        }
+
+        if (cleanup is not null)
+        {
+            details.Add($"Temporary files: {cleanup.Message}");
+        }
+
+        StepResult? updateCheck = allResults.FirstOrDefault(r => r.Step.Kind == RepairStepKind.CheckWindowsUpdates);
+        if (updateCheck is not null)
+        {
+            details.Add($"Windows Update: {updateCheck.Message}");
         }
 
         bool restartRecommended = anyRepaired || restartPending || Has(StepFinding.PartiallyRepaired);
 
         return new RepairSummary(outcome, headline, details.Distinct().ToList(), restartRecommended);
+    }
+
+    private static bool WasInstalled(StepResult r) =>
+        r.Finding is StepFinding.UpdateInstalled or StepFinding.UpdateInstalledRestartRequired;
+
+    private static RepairSummary BuildForUpdateInstall(IReadOnlyList<StepResult> results)
+    {
+        int installed = results.Count(WasInstalled);
+        bool restartRequired = results.Any(r => r.Finding == StepFinding.UpdateInstalledRestartRequired);
+
+        (OverallOutcome outcome, string headline) = true switch
+        {
+            _ when installed == results.Count => (OverallOutcome.UpdatesInstalled,
+                results.Count == 1 ? "The update was installed." : "All the selected updates were installed."),
+            _ when installed > 0 => (OverallOutcome.UpdatesPartlyInstalled,
+                $"{installed} of {results.Count} updates were installed. The others could not be installed."),
+            _ => (OverallOutcome.UpdatesNotInstalled,
+                results.Count == 1 ? "The update could not be installed." : "The selected updates could not be installed."),
+        };
+
+        var details = new List<string>();
+        foreach (StepResult failed in results.Where(r => !WasInstalled(r)))
+        {
+            details.Add($"{failed.Step.Title}: {failed.Message}");
+        }
+
+        if (installed < results.Count)
+        {
+            details.Add("You can try again later, or install them from Settings > Windows Update. The log file contains the error details.");
+        }
+
+        if (restartRequired)
+        {
+            details.Add("Windows needs a restart to finish installing the updates.");
+        }
+
+        return new RepairSummary(outcome, headline, details.Distinct().ToList(), restartRequired);
     }
 }

@@ -65,4 +65,42 @@ public class RealToolIntegrationTests(ITestOutputHelper output)
         Assert.NotEmpty(percents);
         Assert.NotEqual(StepFinding.ResultUnrecognized, analysis.Finding);
     }
+
+    [Fact] // Read-only: only works out where the folders are, deletes nothing.
+    public void Temp_folders_resolve_to_this_users_temp_and_windows_temp()
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        IReadOnlyList<TempFolder> folders = TempFolders.Locate();
+        folders.ToList().ForEach(f => output.WriteLine($"{f.Description}: {f.Path ?? "(none)"} {f.Problem}"));
+
+        Assert.Equal(Path.TrimEndingDirectorySeparator(Path.GetTempPath()), folders[0].Path, ignoreCase: true);
+        Assert.Equal(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Temp"), folders[1].Path, ignoreCase: true);
+    }
+
+    [Fact] // Read-only: searches like Settings > Windows Update does, installs nothing. Needs the internet.
+    public void Windows_update_search_returns_a_readable_list()
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        var agent = new WuaWindowsUpdateAgent();
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        IReadOnlyList<WindowsUpdateInfo> updates = agent.Search();
+
+        output.WriteLine($"{updates.Count} updates in {timer.Elapsed}");
+        updates.ToList().ForEach(u => output.WriteLine($"{(u.IsOptional ? "optional" : "important")} driver={u.IsDriver} input={u.NeedsUserInput} {u.DownloadSizeBytes:N0} B  {u.Title}"));
+
+        Assert.All(updates, u =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(u.Id));
+            Assert.False(string.IsNullOrWhiteSpace(u.Title));
+            Assert.True(u.DownloadSizeBytes >= 0);
+        });
+    }
 }

@@ -85,6 +85,19 @@ public sealed class RepairOrchestrator(
         ProcessRunResult? run = null;
         try
         {
+            if (step.InProcess is not null)
+            {
+                StepAnalysis outcome = await step.InProcess.RunAsync(line =>
+                {
+                    log.StepOutput(line, null);
+                    Notify(() => observer.StepOutput(index, line, null));
+                }).ConfigureAwait(false);
+
+                var inProcessResult = new StepResult(step, outcome.Status, outcome.Finding, outcome.Message, null, time.GetElapsedTime(startTimestamp));
+                log.StepFinished(inProcessResult, null);
+                return inProcessResult;
+            }
+
             run = await runner.RunAsync(step.ExecutablePath, step.Arguments, line =>
             {
                 double? percent = ProgressParser.TryParsePercent(line);

@@ -10,6 +10,9 @@ public interface IDialogService
     /// <summary>Asks for consent to contact GitHub. Returns true only on an explicit "Yes".</summary>
     bool AskToCheckForUpdates();
 
+    /// <summary>Confirms installing the ticked Windows updates. Returns true only on an explicit "Yes".</summary>
+    bool ConfirmInstallUpdates(int count, bool includesOptional);
+
     void ShowError(string title, string message);
 
     void ShowInformation(string title, string message);
@@ -41,6 +44,25 @@ public sealed class MessageBoxDialogService : IDialogService
             "The app will only tell you when a new version is available. It will not download or install anything.\n\n" +
             "You can change this at any time with the \"Update checks\" link at the bottom of the window.",
             "Check for updates?",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question,
+            MessageBoxResult.No);
+        return result == MessageBoxResult.Yes;
+    }
+
+    public bool ConfirmInstallUpdates(int count, bool includesOptional)
+    {
+        string what = count == 1 ? "the selected update" : $"the {count} selected updates";
+        string optional = includesOptional
+            ? "\n\nYou have chosen optional updates. Optional updates, such as drivers, are usually only worth installing if they fix a problem you have."
+            : "";
+        MessageBoxResult result = MessageBox.Show(
+            Owner(),
+            $"Windows Repair Assistant will download and install {what} using Windows Update.\n\n" +
+            "This can take a long time, and Windows may need to restart afterwards. Please don't turn off your computer while updates are installing." +
+            optional +
+            "\n\nDo you want to install now?",
+            "Install updates?",
             MessageBoxButton.YesNo,
             MessageBoxImage.Question,
             MessageBoxResult.No);

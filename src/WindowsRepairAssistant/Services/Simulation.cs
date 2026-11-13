@@ -80,4 +80,58 @@ internal sealed class SimulatedUpdateChecker(string latestVersion) : IUpdateChec
     public Task<UpdateCheckResult> CheckAsync(string currentVersion) =>
         Task.FromResult(new UpdateCheckResult(UpdateCheckStatus.UpdateAvailable, latestVersion));
 }
+
+/// <summary>DEBUG BUILDS ONLY. Used with --simulate so a simulated run never deletes real files.</summary>
+internal sealed class SimulatedTempCleanup : IInProcessStep
+{
+    public async Task<StepAnalysis> RunAsync(Action<string> onOutputLine)
+    {
+        onOutputLine(@"Cleaning your Temp folder: C:\Users\Example\AppData\Local\Temp [SIMULATED]");
+        await Task.Delay(800).ConfigureAwait(false);
+        onOutputLine("  500 files deleted so far…");
+        await Task.Delay(800).ConfigureAwait(false);
+        onOutputLine(@"Cleaning the Windows Temp folder: C:\Windows\Temp [SIMULATED]");
+        await Task.Delay(800).ConfigureAwait(false);
+        return new StepAnalysis(StepStatus.Succeeded, StepFinding.None,
+            "Deleted 1,234 files and freed 812.4 MB. 7 files in use or waiting for a restart were left alone. [SIMULATED - nothing was deleted]");
+    }
+}
+
+/// <summary>
+/// DEBUG BUILDS ONLY. Used with --simulate: offers made-up updates and pretends to install them, so a
+/// simulated run never contacts Windows Update. "Example driver" fails to install, to show that path.
+/// </summary>
+internal sealed class SimulatedWindowsUpdateAgent(string scenario) : IWindowsUpdateAgent
+{
+    public IReadOnlyList<WindowsUpdateInfo> Search()
+    {
+        Thread.Sleep(1500);
+        if (scenario == "no-internet")
+        {
+            throw new WindowsUpdateException("Simulated: no internet", unchecked((int)0x8024402C));
+        }
+
+        return
+        [
+            new("sim-1", "[SIMULATED] Security update for Windows (KB0000001)", 650L * 1024 * 1024, false, false, false),
+            new("sim-2", "[SIMULATED] Microsoft Defender Antivirus definition update", 80L * 1024 * 1024, false, false, false),
+            new("sim-3", "[SIMULATED] Example driver - Display", 300L * 1024 * 1024, true, true, false),
+            new("sim-4", "[SIMULATED] Example interactive update", 5L * 1024 * 1024, true, false, true),
+        ];
+    }
+
+    public UpdateInstallOutcome DownloadAndInstall(string updateId, Action<string> onProgress)
+    {
+        onProgress("Downloading… [SIMULATED]");
+        Thread.Sleep(1200);
+        onProgress("Installing… [SIMULATED]");
+        Thread.Sleep(1200);
+        return updateId switch
+        {
+            "sim-1" => new UpdateInstallOutcome(true, true, null, null),
+            "sim-3" => new UpdateInstallOutcome(false, false, unchecked((int)0x80240022), "Simulated failure."),
+            _ => new UpdateInstallOutcome(true, false, null, null),
+        };
+    }
+}
 #endif
